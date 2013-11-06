@@ -1,0 +1,12 @@
+{application, jsonbroker,
+ [
+  {description, ""},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {mod, { jsonbroker_app, []}},
+  {env, []}
+ ]}.
