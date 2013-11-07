@@ -6,7 +6,7 @@
 tokenize(Pattern) ->
     tokenize(Pattern, [state_root], []).
 
-tokenize([], _State, Acc) ->
+tokenize([], [state_root | _], Acc) ->
     lists:reverse(Acc);
 tokenize([${ | T], State = [state_root | _], Acc) ->
     tokenize(T, State, [open_curvy_brace | Acc]);

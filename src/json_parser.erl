@@ -3,19 +3,6 @@
 
 -export([parse/1]).
 
-% Expr   -> '{' [Pair (',' Pair)*] '}'
-%         | '[' [['*' ','] Expr (',' ['*' ','] Expr)*] ']'
-%         | '<' [Expr (',' Expr)*] '>'
-%         | '**/' Expr
-%         | '*/' Expr
-%         | 'true'
-%         | 'false'
-%         | 'null'
-%         | number
-%         | string
-%         | underscore
-% Pair   -> string ':' (Expr | '_')
-%         | '_' ':' Expr
 
 parse([true | Tail]) ->
     {Tail, true};
@@ -28,11 +15,11 @@ parse([Item = {number, Value} | Tail]) ->
 parse([Item = {string, String} | Tail]) ->
     {Tail, Item};
 parse([double_star_slash | Tail]) ->
-    {Tail, Expr} = parse(Tail),
-    {Tail, {descendant, Expr}};
+    {R, Expr} = parse(Tail),
+    {R, {descendant, [Expr]}};
 parse([star_slash | Tail]) ->
-    {Tail, Expr} = parse(Tail),
-    {Tail, {child, Expr}};
+    {R, Expr} = parse(Tail),
+    {R, {iterable, [Expr]}}; %% '*' '/' Expr is a syntactic suger for '<' Expr '>'
 parse([underscore | Tail]) ->
     {Tail, any};
 parse([open_curvy_brace | Tail]) ->
@@ -65,13 +52,13 @@ parse_object_tail([coma | Tail], Acc) ->
     parse_object_tail(R, [Expr | Acc]).
 
 parse_pair([{string, String}, column, underscore | Tail]) ->
-    {Tail, {{string, String}, any}};
+    {Tail, {pair, {string, String}, any}};
 parse_pair([{string, String}, column | Tail]) ->
     {R, Expr} = parse(Tail),
-    {R, {{string, String}, Expr}};
+    {R, {pair, {string, String}, Expr}};
 parse_pair([underscore, column | Tail]) ->
     {R, Expr} = parse(Tail),
-    {R, {any, Expr}}.
+    {R, {pair, any, Expr}}.
 
 %% -----
 
@@ -113,8 +100,7 @@ parse_list_tail([coma | Tail], Acc) -> % ',' Expr Tail
 %% -----
 
 parse_iterable([close_angle_brace | Tail]) ->
-    Matcher = fun json_matchers:match_any_iterable/1,
-    {Tail, {iterable, empty}};
+    {Tail, {iterable, any}};
 parse_iterable(List) ->
     parse_iterable_head(List).
 

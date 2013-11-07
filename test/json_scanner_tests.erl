@@ -13,25 +13,29 @@ illegal_pattern_test_() ->
 
 legal_pattern_test_() ->
     Tests = [
+             {"42",
+              [{number, 42}]},
+             {"\"42\"",
+              [{string, "42"}]},
+             {"true",
+              [true]},
+             {"false",
+              [false]},
+             {"null",
+              [null]},
              {"*/",
               [star_slash]},
-             
              {"**/",
               [double_star_slash]},
-             
              {"* */",
               [star, star_slash]},
-             
              {"**/*",
               [double_star_slash, star]},
-             
              {"*/{_:42}",
               [star_slash, open_curvy_brace, underscore, column, {number, 42}, close_curvy_brace]},
-             
              {"{ _ : */ {_: 42 } }",
               [open_curvy_brace, underscore, column, star_slash,
                open_curvy_brace, underscore, column, {number, 42}, close_curvy_brace, close_curvy_brace]},
-             
              {"  {  \"answer is 42\":{ _:42, \"bar\":_}, _:true, \"foo\":_ } ",
               [open_curvy_brace, {string,"answer is 42"}, column, open_curvy_brace, underscore, column, {number,42}, coma,
                {string,"bar"}, column, underscore, close_curvy_brace, coma, underscore, column, true,coma, {string,"foo"},

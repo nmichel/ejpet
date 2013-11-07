@@ -1,0 +1,15 @@
+Expr   -> '{' [Pair (',' Pair)*] '}'
+        | '[' [['*' ','] Expr (',' ['*' ','] Expr)*] ']'
+        | '<' [Expr (',' Expr)*] '>'
+        | '**/' Expr
+        | '*/' Expr
+        | '_'
+        | "true"
+        | "false"
+        | "null"
+        | Number
+        | String
+Pair   -> String ':' (Expr | '_')
+        | '_' ':' Expr
+Number -> [0-9]+
+String -> '"' [a-zA-Z_ 0-9]* '"'
