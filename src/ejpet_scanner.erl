@@ -69,5 +69,5 @@ tokenize([V | T], [{state_string, String} | Tail], Acc) when V >= $a, V =< $z ->
     tokenize(T, [{state_string, [V | String]} | Tail], Acc);
 tokenize([V | T], [{state_string, String} | Tail], Acc) when V >= $0, V =< $9 ->
     tokenize(T, [{state_string, [V | String]} | Tail], Acc);
-tokenize([$" | T], State = [{state_string, String} | Tail], Acc) ->
+tokenize([$" | T], [{state_string, String} | Tail], Acc) ->
     tokenize(T, Tail, [{string, lists:reverse(String)} | Acc]).

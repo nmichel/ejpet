@@ -15,9 +15,9 @@ continue_until_match([Item | Tail], Matcher) ->
             continue_until_match(Tail, Matcher)
     end.
 
-continue_until_value_match([{}], Matcher) ->
+continue_until_value_match([{}], _Matcher) ->
     {false, []};
-continue_until_value_match([], Matcher) ->
+continue_until_value_match([], _Matcher) ->
     {false, []};
 continue_until_value_match([{_Key, Val} | Tail], Matcher) ->
     case Matcher(Val) of 
@@ -34,9 +34,9 @@ continue_until_value_match([Item | Tail], Matcher) ->
             continue_until_value_match(Tail, Matcher)
     end.
 
-deep_continue_until_value_match([{}], Matcher) ->
+deep_continue_until_value_match([{}], _Matcher) ->
     {false, []};
-deep_continue_until_value_match([], Matcher) ->
+deep_continue_until_value_match([], _Matcher) ->
     {false, []};
 deep_continue_until_value_match([{_Key, Val} | Tail], Matcher) ->
     case Matcher(Val) of 
@@ -46,7 +46,7 @@ deep_continue_until_value_match([{_Key, Val} | Tail], Matcher) ->
             case Val of
                 [_|_] ->
                     case deep_continue_until_value_match(Val, Matcher) of 
-                        {true, R} ->
+                        {true, _R} ->
                             {true, Tail};
                         _ ->
                             deep_continue_until_value_match(Tail, Matcher)

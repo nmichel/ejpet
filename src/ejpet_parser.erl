@@ -10,9 +10,9 @@ parse([false | Tail]) ->
     {Tail, false};
 parse([null | Tail]) ->
     {Tail, null};
-parse([Item = {number, Value} | Tail]) ->
+parse([Item = {number, _Value} | Tail]) ->
     {Tail, Item};
-parse([Item = {string, String} | Tail]) ->
+parse([Item = {string, _String} | Tail]) ->
     {Tail, Item};
 parse([double_star_slash | Tail]) ->
     {R, Expr} = parse(Tail),
@@ -39,7 +39,7 @@ parse_object(List) ->
 parse_object_head(List) ->
     {R, Expr} = parse_pair(List),
     case R of
-        [coma | Tail] ->
+        [coma | _Tail] ->
             parse_object_tail(R, [Expr]);
         [close_curvy_brace | Tail] ->
             {Tail, {object, [Expr]}}
@@ -72,7 +72,7 @@ parse_list(List) ->
 parse_list_head([star, coma | List]) ->
     {R, Expr} = parse(List),
     case R of
-        [coma | Tail] ->
+        [coma | _Tail] ->
             parse_list_tail(R, [{find, Expr}]); % '*' ',' Expr Tail
         [close_square_brace | Tail] -> % '*', ',', Expr, ']'
             {Tail, {list, [{find, Expr}, eol]}} % strict : previous expression must match the end of list
@@ -80,7 +80,7 @@ parse_list_head([star, coma | List]) ->
 parse_list_head(List) ->
     {R, Expr} = parse(List),
     case R of
-        [coma | Tail] -> % Expr ',' Tail
+        [coma | _Tail] -> % Expr ',' Tail
             parse_list_tail(R, [Expr]);
         [close_square_brace | Tail] -> % Expr ']'
             {Tail, {list, [Expr, eol]}} % strict : previous expression must match the end of list
@@ -107,7 +107,7 @@ parse_iterable(List) ->
 parse_iterable_head(List) ->
     {R, Expr} = parse(List),
     case R of
-        [coma | Tail] -> % Expr ',' Tail
+        [coma | _Tail] -> % Expr ',' Tail
             parse_iterable_tail(R, [Expr]);
         [close_angle_brace | Tail] -> % Expr '>'
             {Tail, {iterable, [Expr]}}

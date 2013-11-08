@@ -90,9 +90,9 @@ generate_matcher({list, Conditions}) ->
                                      end
                              end, Conditions),
     fun(Items) ->
-            {Statuses, Tail} =
-                lists:foldl(fun(Matcher, {Acc, Items})->
-                                    {S, R} = Matcher(Items),
+            {Statuses, _Tail} =
+                lists:foldl(fun(Matcher, {Acc, ItemList})->
+                                    {S, R} = Matcher(ItemList),
                                     {[S | Acc], R}
                             end, {[], Items}, ItemMatchers),
             lists:foldl(fun(S, Acc) ->
