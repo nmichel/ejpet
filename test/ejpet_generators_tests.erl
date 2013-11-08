@@ -1,8 +1,11 @@
--module(ejpet_matcher_generators_tests).
+-module(ejpet_generators_tests).
 -author('nicolas.michel.lava@gmail.com').
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+
+-define(BACKENDS, [jsx]).
+
 
 basic_test_() ->
     Tests = [
@@ -159,12 +162,15 @@ complex_test_() ->
     generate_test_list(Tests).
 
 generate_test_list(TestDescs) ->
+    [generate_test_list(TestDescs, Backend) || Backend <- ?BACKENDS].
+
+generate_test_list(TestDescs, jsx) ->
     lists:reverse(
-      lists:foldl(fun({Matcher, T}, Acc) ->
-                          {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Matcher)),
-                          F = ejpet_generators:generate_matcher(AST),
+      lists:foldl(fun({Pattern, T}, Acc) ->
+                          {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+                          F = ejpet_generators_jsx:generate_matcher(AST),
                           lists:foldl(fun ({Node, Status}, Acc) ->
-                                              TestName = Matcher ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
+                                              TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
                                               [{TestName, ?_test(?assert(F(jsx:decode(Node)) == Status))} | Acc]
                                       end, Acc, T)
                   end, [], TestDescs)).

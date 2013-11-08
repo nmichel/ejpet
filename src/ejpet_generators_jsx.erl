@@ -1,4 +1,4 @@
--module(ejpet_generators).
+-module(ejpet_generators_jsx).
 
 -export([generate_matcher/1]).
 
