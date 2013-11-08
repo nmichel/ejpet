@@ -1,4 +1,4 @@
--module(jsonbroker_app).
+-module(ejpet_app).
 
 -behaviour(application).
 
@@ -10,7 +10,7 @@
 %% ===================================================================
 
 start(_StartType, _StartArgs) ->
-    jsonbroker_sup:start_link().
+    ejpet_sup:start_link().
 
 stop(_State) ->
     ok.

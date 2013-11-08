@@ -1,4 +1,4 @@
--module(json_matchers).
+-module(ejpet_matchers).
 
 -export([match_any/1,
          match_true/1,

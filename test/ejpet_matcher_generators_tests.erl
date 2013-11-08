@@ -1,4 +1,4 @@
--module(matcher_generators_tests).
+-module(ejpet_matcher_generators_tests).
 -author('nicolas.michel.lava@gmail.com').
 
 -ifdef(TEST).
@@ -161,8 +161,8 @@ complex_test_() ->
 generate_test_list(TestDescs) ->
     lists:reverse(
       lists:foldl(fun({Matcher, T}, Acc) ->
-                          {_, AST} = json_parser:parse(json_scanner:tokenize(Matcher)),
-                          F = matcher_generators:generate_matcher(AST),
+                          {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Matcher)),
+                          F = ejpet_generators:generate_matcher(AST),
                           lists:foldl(fun ({Node, Status}, Acc) ->
                                               TestName = Matcher ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
                                               [{TestName, ?_test(?assert(F(jsx:decode(Node)) == Status))} | Acc]

@@ -1,4 +1,4 @@
--module(matcher_generators).
+-module(ejpet_generators).
 
 -export([generate_matcher/1]).
 
@@ -16,7 +16,7 @@ generate_matcher({object, any}) ->
 generate_matcher({object, Conditions}) ->
     PairMatchers = lists:map(fun generate_matcher/1, Conditions),
     fun(Items) when is_list(Items) ->
-            R = [matcher_tools:continue_until_match(Items, PairMatcher) || PairMatcher <- PairMatchers],
+            R = [ejpet_matcher_tools:continue_until_match(Items, PairMatcher) || PairMatcher <- PairMatchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -75,7 +75,7 @@ generate_matcher({list, Conditions}) ->
                                      fun([{}]) ->
                                              {false, []};
                                         (Items) when is_list(Items) ->
-                                             matcher_tools:continue_until_match(Items, Matcher);
+                                             ejpet_matcher_tools:continue_until_match(Items, Matcher);
                                         (_) ->
                                              {false, []}
                                      end;
@@ -116,7 +116,7 @@ generate_matcher({iterable, any}) ->
 generate_matcher({iterable, Conditions}) ->
     Matchers = lists:map(fun generate_matcher/1, Conditions),
     fun(Items) when is_list(Items) ->
-            R = [matcher_tools:continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
+            R = [ejpet_matcher_tools:continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -132,7 +132,7 @@ generate_matcher({iterable, Conditions}) ->
 generate_matcher({descendant, Conditions}) ->
     Matchers = lists:map(fun generate_matcher/1, Conditions),
     fun (Items) when is_list(Items) ->
-            R = [matcher_tools:deep_continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
+            R = [ejpet_matcher_tools:deep_continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->

@@ -1,4 +1,4 @@
--module(json_parser).
+-module(ejpet_parser).
 -author('nicolas.michel.lava@gmail.com').
 
 -export([parse/1]).

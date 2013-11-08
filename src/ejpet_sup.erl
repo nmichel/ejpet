@@ -1,5 +1,4 @@
-
--module(jsonbroker_sup).
+-module(ejpet_sup).
 
 -behaviour(supervisor).
 

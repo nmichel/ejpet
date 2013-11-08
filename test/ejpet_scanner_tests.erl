@@ -1,4 +1,4 @@
--module(json_scanner_tests).
+-module(ejpet_scanner_tests).
 -author('nicolas.michel.lava@gmail.com').
 
 -ifdef(TEST).
@@ -9,7 +9,7 @@ illegal_pattern_test_() ->
              {"* /"},
              {"** /"}
             ],
-    [{Expr, ?_test(?assertError(function_clause, json_scanner:tokenize(Expr)))} || {Expr} <- Tests].
+    [{Expr, ?_test(?assertError(function_clause, ejpet_scanner:tokenize(Expr)))} || {Expr} <- Tests].
 
 legal_pattern_test_() ->
     Tests = [
@@ -42,7 +42,7 @@ legal_pattern_test_() ->
                column, underscore, close_curvy_brace]
              }
             ],
-    [{Expr, ?_test(?assert(json_scanner:tokenize(Expr) =:= Expected))} || {Expr, Expected} <- Tests].
+    [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr) =:= Expected))} || {Expr, Expected} <- Tests].
 
 %      {"{\"foo\":*/{_:42}}",
 %      }]

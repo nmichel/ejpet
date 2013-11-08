@@ -1,4 +1,4 @@
--module(matcher_tools).
+-module(ejpet_matcher_tools).
 
 -export([continue_until_match/2,
          continue_until_value_match/2,

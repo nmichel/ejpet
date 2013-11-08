@@ -1,7 +1,8 @@
--module(json_scanner).
+-module(ejpet_scanner).
 -author('nicolas.michel.lava@gmail.com').
 
 -export([tokenize/1]).
+
 
 tokenize(Pattern) ->
     tokenize(Pattern, [state_root], []).
