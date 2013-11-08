@@ -4,7 +4,7 @@
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--define(BACKENDS, [jsx]).
+-define(BACKENDS, [jsx, jiffy]).
 
 
 basic_test_() ->
@@ -172,6 +172,16 @@ generate_test_list(TestDescs, jsx) ->
                           lists:foldl(fun ({Node, Status}, Acc) ->
                                               TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
                                               [{TestName, ?_test(?assert(F(jsx:decode(Node)) == Status))} | Acc]
+                                      end, Acc, T)
+                  end, [], TestDescs));
+generate_test_list(TestDescs, jiffy) ->
+    lists:reverse(
+      lists:foldl(fun({Pattern, T}, Acc) ->
+                          {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+                          F = ejpet_jiffy_generators:generate_matcher(AST),
+                          lists:foldl(fun ({Node, Status}, Acc) ->
+                                              TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
+                                              [{TestName, ?_test(?assert(F(jiffy:decode(Node)) == Status))} | Acc]
                                       end, Acc, T)
                   end, [], TestDescs)).
 
