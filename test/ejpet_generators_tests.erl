@@ -198,7 +198,7 @@ generate_test_list(TestDescs, jsx) ->
     lists:reverse(
       lists:foldl(fun({Pattern, T}, Acc) ->
                           {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
-                          F = ejpet_generators_jsx:generate_matcher(AST),
+                          F = ejpet_jsx_generators:generate_matcher(AST),
                           lists:foldl(fun ({Node, Status}, Acc) ->
                                               TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
                                               [{TestName, ?_test(?assert(F(jsx:decode(Node)) == Status))} | Acc]

@@ -1,4 +1,4 @@
--module(ejpet_generators_jsx).
+-module(ejpet_jsx_generators).
 
 -export([generate_matcher/1]).
 
@@ -16,7 +16,7 @@ generate_matcher({object, any}) ->
 generate_matcher({object, Conditions}) ->
     PairMatchers = lists:map(fun generate_matcher/1, Conditions),
     fun(Items) when is_list(Items) ->
-            R = [ejpet_matcher_tools:continue_until_match(Items, PairMatcher) || PairMatcher <- PairMatchers],
+            R = [continue_until_match(Items, PairMatcher) || PairMatcher <- PairMatchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -75,7 +75,7 @@ generate_matcher({list, Conditions}) ->
                                      fun([{}]) ->
                                              {false, []};
                                         (Items) when is_list(Items) ->
-                                             ejpet_matcher_tools:continue_until_match(Items, Matcher);
+                                             continue_until_match(Items, Matcher);
                                         (_) ->
                                              {false, []}
                                      end;
@@ -116,7 +116,7 @@ generate_matcher({iterable, any}) ->
 generate_matcher({iterable, Conditions}) ->
     Matchers = lists:map(fun generate_matcher/1, Conditions),
     fun(Items) when is_list(Items) ->
-            R = [ejpet_matcher_tools:continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
+            R = [continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -132,7 +132,7 @@ generate_matcher({iterable, Conditions}) ->
 generate_matcher({descendant, Conditions}) ->
     Matchers = lists:map(fun generate_matcher/1, Conditions),
     fun (Items) when is_list(Items) ->
-            R = [ejpet_matcher_tools:deep_continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
+            R = [deep_continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -180,4 +180,74 @@ generate_matcher(eol) ->
             true;
        (_) ->
             false
+    end.
+
+%% -----
+
+continue_until_match([], Matcher) ->
+    {Matcher([]), []};
+continue_until_match([Item | Tail], Matcher) ->
+    case Matcher(Item) of 
+        true ->
+            {true, Tail};
+        _ ->
+            continue_until_match(Tail, Matcher)
+    end.
+
+continue_until_value_match([{}], _Matcher) ->
+    {false, []};
+continue_until_value_match([], _Matcher) ->
+    {false, []};
+continue_until_value_match([{_Key, Val} | Tail], Matcher) ->
+    case Matcher(Val) of 
+        true ->
+            {true, Tail};
+        _ ->
+            continue_until_value_match(Tail, Matcher)
+    end;
+continue_until_value_match([Item | Tail], Matcher) ->
+    case Matcher(Item) of 
+        true ->
+            {true, Tail};
+        _ ->
+            continue_until_value_match(Tail, Matcher)
+    end.
+
+deep_continue_until_value_match([{}], _Matcher) ->
+    {false, []};
+deep_continue_until_value_match([], _Matcher) ->
+    {false, []};
+deep_continue_until_value_match([{_Key, Val} | Tail], Matcher) ->
+    case Matcher(Val) of 
+        true ->
+            {true, Tail};
+        _ ->
+            case Val of
+                [_|_] ->
+                    case deep_continue_until_value_match(Val, Matcher) of 
+                        {true, _R} ->
+                            {true, Tail};
+                        _ ->
+                            deep_continue_until_value_match(Tail, Matcher)
+                    end;
+                _ ->
+                    deep_continue_until_value_match(Tail, Matcher)
+            end
+    end;
+deep_continue_until_value_match([Item | Tail], Matcher) ->
+    case Matcher(Item) of 
+        true ->
+            {true, Tail};
+        _ ->
+            case Item of
+                [_|_] ->
+                    case deep_continue_until_value_match(Item, Matcher) of 
+                        {true, _} ->
+                            {true, Tail};
+                        _ ->
+                            deep_continue_until_value_match(Tail, Matcher)
+                    end;
+                _ ->
+                    deep_continue_until_value_match(Tail, Matcher)
+            end
     end.
