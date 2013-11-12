@@ -1,4 +1,4 @@
--module(ejpet_jiffy_generators).
+-module(ejpet_mochijson2_generators).
 
 -export([generate_matcher/1]).
 
@@ -6,17 +6,15 @@
 %% ---- Object
 
 generate_matcher({object, any}) ->
-    fun({[]}) ->
-            true;
-       ({[{_, _} | _]}) ->
+    fun({struct, Pairs}) when is_list(Pairs) ->
             true;
        (_) ->
             false
     end;
 generate_matcher({object, Conditions}) ->
     PairMatchers = lists:map(fun generate_matcher/1, Conditions),
-    fun({Items}) when is_list(Items) ->
-            R = [ejpet_jiffy_generators_tools:continue_until_match(Items, PairMatcher) || PairMatcher <- PairMatchers],
+    fun({struct, Items}) when is_list(Items) ->
+            R = [ejpet_mochijson2_generators_tools:continue_until_match(Items, PairMatcher) || PairMatcher <- PairMatchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -59,19 +57,16 @@ generate_matcher({list, empty}) ->
     end;
 
 generate_matcher({list, any}) ->
-    fun([]) ->
-            true;
-       ([_|_]) ->
+    fun(Items) when is_list(Items) ->
             true;
        (_) ->
             false
     end;
-
 generate_matcher({list, Conditions}) ->
     ItemMatchers = lists:map(fun({find, Expr}) ->
                                      Matcher = generate_matcher(Expr),
                                      fun(Items) when is_list(Items) ->
-                                             ejpet_jiffy_generators_tools:continue_until_match(Items, Matcher);
+                                             ejpet_mochijson2_generators_tools:continue_until_match(Items, Matcher);
                                         (_) ->
                                              {false, []}
                                      end;
@@ -103,9 +98,9 @@ generate_matcher({iterable, any}) ->
     %% Therefore, checking if an item is an erlang list is enough to say 
     %% that it is an iterable.
     %% 
-    fun(What) when is_list(What) ->
+    fun({struct, _What}) ->
             true;
-       ({What}) ->
+       (What) when is_list(What) ->
             true;
        (_) ->
             false
@@ -113,8 +108,8 @@ generate_matcher({iterable, any}) ->
 
 generate_matcher({iterable, Conditions}) ->
     Matchers = lists:map(fun generate_matcher/1, Conditions),
-    fun({Items}) when is_list(Items) ->
-            R = [ejpet_jiffy_generators_tools:continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
+    fun({struct, Items}) ->
+            R = [ejpet_mochijson2_generators_tools:continue_until_object_value_match(Items, Matcher) || Matcher <- Matchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -122,7 +117,8 @@ generate_matcher({iterable, Conditions}) ->
                                            end, R),
             NonSatisfied == [];
        (Items) when is_list(Items) ->
-            R = [ejpet_jiffy_generators_tools:continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
+            io:format("Match list as iterable ~p~n", [Items]),
+            R = [ejpet_mochijson2_generators_tools:continue_until_list_value_match(Items, Matcher) || Matcher <- Matchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -137,8 +133,8 @@ generate_matcher({iterable, Conditions}) ->
 
 generate_matcher({descendant, Conditions}) ->
     Matchers = lists:map(fun generate_matcher/1, Conditions),
-    fun({Items}) when is_list(Items) ->
-            R = [ejpet_jiffy_generators_tools:deep_continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
+    fun({struct, Items}) ->
+            R = [ejpet_mochijson2_generators_tools:deep_continue_until_object_value_match(Items, Matcher) || Matcher <- Matchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->
@@ -146,7 +142,7 @@ generate_matcher({descendant, Conditions}) ->
                                            end, R),
             NonSatisfied == [];
        (Items) when is_list(Items) ->
-            R = [ejpet_jiffy_generators_tools:deep_continue_until_value_match(Items, Matcher) || Matcher <- Matchers],
+            R = [ejpet_mochijson2_generators_tools:deep_continue_until_list_value_match(Items, Matcher) || Matcher <- Matchers],
             NonSatisfied = lists:dropwhile(fun({true, _}) ->
                                                    true;
                                               (_) ->

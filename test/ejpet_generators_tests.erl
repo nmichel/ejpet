@@ -4,7 +4,7 @@
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--define(BACKENDS, [jsx, jiffy]).
+-define(BACKENDS, [jsx, jiffy, mochijson2]).
 
 
 basic_test_() ->
@@ -121,7 +121,14 @@ iterable_test_() ->
                {<<"[{\"foo\":42}]">>, false},
                {<<"[{\"foo\":42}, 42]">>, true},
                {<<"[41]">>, false}
-              ]}
+              ]},
+             {"<{_:42}>",
+              [{<<"[{\"bar\": 42}]">>, true}
+              ]},
+             {"<{_:[*, 42, *]}>",
+              [
+               {<<"[{\"bar\": [42]}]">>, true}
+             ]}
             ],
     generate_test_list(Tests).
 
@@ -146,6 +153,9 @@ descendant_test_() ->
                {<<"[\"foo\", [42]]">>, true},
                {<<"{\"foo\" : [42]}">>, true},
                {<<"[[{\"bar\": [{\"foo\": [\"this one matches\", 42]}]}], \"next does not match\", 42]">>, true}
+              ]},
+             {"**/{_:42}",
+              [{<<"[{\"bar\": 42}]">>, true}
               ]}
             ],
     generate_test_list(Tests).
@@ -157,6 +167,26 @@ complex_test_() ->
                {<<"{\"foo\": []}">>, true},
                {<<"{\"bar\": [\"neh\", 42, {}]}">>, true},
                {<<"{\"bar\": 42, \"foo\": {}}">>, false}
+              ]}
+            ],
+    generate_test_list(Tests).
+
+bug_test_() ->
+    Tests = [
+             {"<42>",
+              [{<<"[1, \"foo\", {\"bar\": [42]}, 42]">>, true}
+              ]},
+             {"<[*, 42, *]>",
+              [{<<"[[42]]">>, true}
+              ]},
+             {"{_:[*, 42, *]}",
+              [{<<"{\"bar\": [42]}">>, true}
+              ]},
+             {"<{_:[*, 42, *]}>",
+              [{<<"{\"foo\": {\"bar\": [42]}}">>, true}
+              ]},
+             {"<{_:[*, 42, *]}>",
+              [{<<"[{\"bar\": [42]}]">>, true}
               ]}
             ],
     generate_test_list(Tests).
@@ -182,6 +212,16 @@ generate_test_list(TestDescs, jiffy) ->
                           lists:foldl(fun ({Node, Status}, Acc) ->
                                               TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
                                               [{TestName, ?_test(?assert(F(jiffy:decode(Node)) == Status))} | Acc]
+                                      end, Acc, T)
+                  end, [], TestDescs));
+generate_test_list(TestDescs, mochijson2) ->
+    lists:reverse(
+      lists:foldl(fun({Pattern, T}, Acc) ->
+                          {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+                          F = ejpet_mochijson2_generators:generate_matcher(AST),
+                          lists:foldl(fun ({Node, Status}, Acc) ->
+                                              TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
+                                              [{TestName, ?_test(?assert(F(mochijson2:decode(Node)) == Status))} | Acc]
                                       end, Acc, T)
                   end, [], TestDescs)).
 

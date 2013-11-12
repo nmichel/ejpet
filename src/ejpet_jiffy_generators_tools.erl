@@ -15,8 +15,6 @@ continue_until_match([Item | Tail], Matcher) ->
             continue_until_match(Tail, Matcher)
     end.
 
-continue_until_value_match({[]}, _Matcher) ->
-    {false, []};
 continue_until_value_match([], _Matcher) ->
     {false, []};
 continue_until_value_match({Items}, Matcher) ->
@@ -37,10 +35,8 @@ continue_until_value_match([Item | Tail], Matcher) ->
     end.
 
 deep_continue_until_value_match({[]}, _Matcher) ->
-    io:format("{[]}~n"),
     {false, []};
 deep_continue_until_value_match([], _Matcher) ->
-    io:format("[]~n"),
     {false, []};
 deep_continue_until_value_match({Items}, Matcher) ->
     deep_continue_until_value_match(Items, Matcher);
