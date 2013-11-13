@@ -72,7 +72,7 @@ generate_matcher({list, any}) ->
 generate_matcher({list, Conditions}) ->
     ItemMatchers = lists:map(fun({find, Expr}) ->
                                      Matcher = generate_matcher(Expr),
-                                     fun([{}]) ->
+                                     fun([{}]) -> % jsx special form for empty object
                                              {false, []};
                                         (Items) when is_list(Items) ->
                                              continue_until_match(Items, Matcher);
@@ -81,7 +81,7 @@ generate_matcher({list, Conditions}) ->
                                      end;
                                 (Expr) ->
                                      Matcher = generate_matcher(Expr),
-                                     fun([{}]) ->
+                                     fun([{}]) -> % jsx special form for empty object
                                              {false, []};
                                         ([]) ->
                                              {Matcher([]), []};

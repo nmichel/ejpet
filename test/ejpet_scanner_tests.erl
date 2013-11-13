@@ -4,14 +4,7 @@
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-illegal_pattern_test_() ->
-    Tests = [
-             {"* /"},
-             {"** /"}
-            ],
-    [{Expr, ?_test(?assertError(function_clause, ejpet_scanner:tokenize(Expr)))} || {Expr} <- Tests].
-
-legal_pattern_test_() ->
+tokenize_test_() ->
     Tests = [
              {"42",
               [{number, 42}]},
@@ -40,10 +33,14 @@ legal_pattern_test_() ->
               [open_curvy_brace, {string,"answer is 42"}, column, open_curvy_brace, underscore, column, {number,42}, coma,
                {string,"bar"}, column, underscore, close_curvy_brace, coma, underscore, column, true,coma, {string,"foo"},
                column, underscore, close_curvy_brace]
-             }
+             },
+             {"<>",
+              [open_angle_brace, close_angle_brace]},
+             {"[]",
+              [open_square_brace, close_square_brace]},
+             {"<\"foo\"{_:42[]}:**/>",
+              [open_angle_brace, {string, "foo"}, open_curvy_brace, underscore, column, {number, 42}, open_square_brace, close_square_brace, close_curvy_brace, column, double_star_slash, close_angle_brace]}
             ],
     [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr) =:= Expected))} || {Expr, Expected} <- Tests].
 
-%      {"{\"foo\":*/{_:42}}",
-%      }]
 -endif.

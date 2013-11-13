@@ -197,7 +197,7 @@ generate_test_list(TestDescs) ->
 generate_test_list(TestDescs, jsx) ->
     lists:reverse(
       lists:foldl(fun({Pattern, T}, Acc) ->
-                          {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+                          {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
                           F = ejpet_jsx_generators:generate_matcher(AST),
                           lists:foldl(fun ({Node, Status}, Acc) ->
                                               TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
@@ -207,7 +207,7 @@ generate_test_list(TestDescs, jsx) ->
 generate_test_list(TestDescs, jiffy) ->
     lists:reverse(
       lists:foldl(fun({Pattern, T}, Acc) ->
-                          {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+                          {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
                           F = ejpet_jiffy_generators:generate_matcher(AST),
                           lists:foldl(fun ({Node, Status}, Acc) ->
                                               TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
@@ -217,7 +217,7 @@ generate_test_list(TestDescs, jiffy) ->
 generate_test_list(TestDescs, mochijson2) ->
     lists:reverse(
       lists:foldl(fun({Pattern, T}, Acc) ->
-                          {_, AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+                          {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
                           F = ejpet_mochijson2_generators:generate_matcher(AST),
                           lists:foldl(fun ({Node, Status}, Acc) ->
                                               TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
