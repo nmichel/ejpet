@@ -33,6 +33,10 @@ tokenize([$*, $/ | T], State = [state_root | _], Acc) ->
     tokenize(T, State, [star_slash | Acc]);
 tokenize([$* | T], State = [state_root | _], Acc) ->
     tokenize(T, State, [star | Acc]);
+tokenize([$( | T], State = [state_root | _], Acc) ->
+    tokenize(T, State, [open_paren | Acc]);
+tokenize([$) | T], State = [state_root | _], Acc) ->
+    tokenize(T, State, [close_paren | Acc]);
 
 tokenize([$\n | T], State = [state_root | _], Acc) ->
     tokenize(T, State, Acc);
@@ -49,6 +53,19 @@ tokenize([$f, $a, $l, $s, $e | T], State = [state_root | _], Acc) ->
     tokenize(T, State, [false | Acc]);
 tokenize([$n, $u, $l, $l | T], State = [state_root | _], Acc) ->
     tokenize(T, State, [null | Acc]);
+
+tokenize([$?, $< | T], State = [state_root | _], Acc) ->
+    tokenize(T, [{state_capture, []} | State], Acc);
+tokenize([$> | T], [{state_capture, Name = [_|_]} | Tail], Acc) ->
+    tokenize(T, Tail, [{capture, lists:reverse(Name)} | Acc]);
+tokenize([$_ | T], [{state_capture, Name} | Tail], Acc) ->
+    tokenize(T, [{state_capture, [$_ | Name]} | Tail], Acc);
+tokenize([V | T], [{state_capture, Name} | Tail], Acc) when V >= $A, V =< $Z ->
+    tokenize(T, [{state_capture, [V | Name]} | Tail], Acc);
+tokenize([V | T], [{state_capture, Name} | Tail], Acc) when V >= $a, V =< $z ->
+    tokenize(T, [{state_capture, [V | Name]} | Tail], Acc);
+tokenize([V | T], [{state_capture, Name} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_capture, [V | Name]} | Tail], Acc);
 
 tokenize([V | T], State = [state_root | _], Acc) when V >= $0, V =< $9 -> %% unroll
     tokenize(T, [{state_number, [V]} | State], Acc);
