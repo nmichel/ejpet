@@ -41,7 +41,7 @@ run_jsx_test_() ->
 
                         %% Produce test function
                         %% 
-                        [?_test(?assert(Expected == {Status, JSONCaptures})) | Acc]
+                        [?_test(?assert(Expected == {Status, RefCaptures})) | Acc]
                 end, [], Tests).
 
 -endif.

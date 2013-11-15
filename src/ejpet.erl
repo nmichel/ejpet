@@ -1,7 +1,8 @@
 -module(ejpet).
 -author('nicolas.michel.lava@gmail.com').
 
--export([compile/1, compile/2,
+-export([generator/1,
+         compile/1, compile/2,
          backend/1,
          run/2,
          match/2, match/3]).
@@ -9,6 +10,9 @@
 
 -define(DEFAULT_BACKEND, jsx).
 
+
+generator(Backend) when is_atom(Backend) ->
+    list_to_atom("ejpet_" ++ atom_to_list(Backend) ++ "_generators").
 
 compile(Pattern) ->
     compile(Pattern, ?DEFAULT_BACKEND).
@@ -42,9 +46,6 @@ match(Pattern, JSON, Backend) ->
     match(Opaque, JSON).
 
 %% -----
-
-generator(Backend) ->
-    list_to_atom("ejpet_" ++ atom_to_list(Backend) ++ "_generators").
 
 decode(JSON, Backend) when is_binary(JSON) ->
     Backend:decode(JSON).

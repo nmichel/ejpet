@@ -6,6 +6,7 @@
 
 %%-define(BACKENDS, [jsx, jiffy, mochijson2]).
 -define(BACKENDS, [jsx]).
+-define(REF_BACKEND, jsx).
 
 
 basic_test_() ->
@@ -188,60 +189,57 @@ complex_test_() ->
             ],
     generate_test_list(Tests).
 
-% capture_test_() ->
-%     Tests = [
-%              {"(?<value>{_:[*]})",
-%               [{<<"{\"foo\": [42]}">>, {true, []}}
-%               ]},
-%              {"(?<value>{_:([*])})",
-%               [{<<"{\"foo\": [42]}">>, {true, []}}
-%               ]},
-%              {"(?<full>{_:(?<local>[*])})",
-%               [{<<"{\"foo\": [42]}">>, {true, []}}
-%               ]},
-%              {"
-%               <
-%                   {
-%                       _:[*, (?<found><42>), *]
-%                   }
-%               >
-%               ",
-%               [{<<"[1, 2, {\"foo\": 42, \"bar\": [{\"neh\": 42}]}, 41, 42]">>, {true, []}}
-%               ]}
-%             ],
-%     generate_test_list(Tests).
+capture_test_() ->
+    Tests = [
+             {"(?<value>{_:[*]})",
+              [{<<"{\"foo\": [42]}">>, {true, [{"value", <<"{\"foo\":[42]}">>}]}}
+              ]},
+             {"(?<value>{_:([*])})",
+              [{<<"{\"foo\": [42]}">>, {true, [{"value", <<"{\"foo\":[42]}">>}, {positional, <<"[42]">>}]}}
+              ]},
+             {"(?<full>{_:(?<local>[*])})",
+              [{<<"{\"foo\": [42]}">>, {true, [{"full", <<"{\"foo\":[42]}">>}, {"local", <<"[42]">>}]}}
+              ]},
+             {"
+              <
+                  {
+                      _:[*, (?<found><42>), *]
+                  }
+              >
+              ",
+              [{<<"[1, 2, {\"foo\": 42, \"bar\": [{\"neh\": 42}]}, 41, 42]">>, {true, [{"found", <<"{\"neh\":42}">>}]}}
+              ]}
+            ],
+    generate_test_list(Tests).
 
 generate_test_list(TestDescs) ->
     [generate_test_list(TestDescs, Backend) || Backend <- ?BACKENDS].
 
-generate_test_list(TestDescs, jsx) ->
+generate_test_list(TestDescs, Backend) ->
     lists:reverse(
       lists:foldl(fun({Pattern, T}, Acc) ->
+                          %% Produce the matcher
+                          %% 
                           {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
-                          F = ejpet_jsx_generators:generate_matcher(AST),
-                          lists:foldl(fun ({Node, Expected = {Status, Captures}}, Acc) ->
-                                              TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
-                                              [{TestName, ?_test(?assert(F(jsx:decode(Node)) == Expected))} | Acc]
-                                      end, Acc, T)
-                  end, [], TestDescs));
-generate_test_list(TestDescs, jiffy) ->
-    lists:reverse(
-      lists:foldl(fun({Pattern, T}, Acc) ->
-                          {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
-                          F = ejpet_jiffy_generators:generate_matcher(AST),
-                          lists:foldl(fun ({Node, Expected = {Status, Captures}}, Acc) ->
-                                              TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
-                                              [{TestName, ?_test(?assert(F(jiffy:decode(Node)) == Expected))} | Acc]
-                                      end, Acc, T)
-                  end, [], TestDescs));
-generate_test_list(TestDescs, mochijson2) ->
-    lists:reverse(
-      lists:foldl(fun({Pattern, T}, Acc) ->
-                          {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
-                          F = ejpet_mochijson2_generators:generate_matcher(AST),
-                          lists:foldl(fun ({Node, Expected = {Status, Captures}}, Acc) ->
-                                              TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(Status),
-                                              [{TestName, ?_test(?assert(F(mochijson2:decode(Node)) == Expected))} | Acc]
+                          F = (ejpet:generator(Backend)):generate_matcher(AST),
+
+                          lists:foldl(fun ({Node, Expected = {ExpStatus, ExpCaptures}}, Acc) ->
+                                              TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(ExpStatus),
+
+                                              %% Execute the test
+                                              %% 
+                                              {Status, Captures} = F(Backend:decode(Node)),
+
+                                              %% Transform captures to text
+                                              %% 
+                                              JSONCaptures = [{VarName, Backend:encode(Cap)} || {VarName, Cap} <- Captures],
+
+                                              %% Parse again and stringify captures using the reference backend
+                                              %% 
+                                              RefCaptures = [{VarName, ?REF_BACKEND:encode(?REF_BACKEND:decode(Cap))} || {VarName, Cap} <- JSONCaptures],
+
+                                      
+                                              [{TestName, ?_test(?assert({Status, JSONCaptures} == Expected))} | Acc]
                                       end, Acc, T)
                   end, [], TestDescs)).
 
