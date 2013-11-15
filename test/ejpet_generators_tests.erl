@@ -4,8 +4,7 @@
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-%%-define(BACKENDS, [jsx, jiffy, mochijson2]).
--define(BACKENDS, [jsx, jiffy]).
+-define(BACKENDS, [jsx, jiffy, mochijson2]).
 -define(REF_BACKEND, jsx).
 
 
@@ -228,15 +227,15 @@ generate_test_list(TestDescs, Backend) ->
 
                                               %% Execute the test
                                               %% 
-                                              {Status, Captures} = F(Backend:decode(Node)),
+                                              {Status, Captures} = F(ejpet:decode(Node, Backend)),
 
                                               %% Transform captures to text
                                               %% 
-                                              JSONCaptures = [{VarName, Backend:encode(Cap)} || {VarName, Cap} <- Captures],
+                                              JSONCaptures = [{VarName, ejpet:encode(Cap, Backend)} || {VarName, Cap} <- Captures],
 
                                               %% Parse again and stringify captures using the reference backend
                                               %% 
-                                              RefCaptures = [{VarName, ?REF_BACKEND:encode(?REF_BACKEND:decode(Cap))} || {VarName, Cap} <- JSONCaptures],
+                                              RefCaptures = [{VarName, ejpet:encode(ejpet:decode(Cap, ?REF_BACKEND), ?REF_BACKEND)} || {VarName, Cap} <- JSONCaptures],
 
                                       
                                               [{TestName, ?_test(?assert({Status, JSONCaptures} == Expected))} | Acc]
