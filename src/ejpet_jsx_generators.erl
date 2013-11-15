@@ -16,7 +16,6 @@ generate_matcher({capture, Pattern, Mode}) ->
             end
     end;
 
-
 %% ---- Object
 
 generate_matcher({object, any}) ->
