@@ -45,7 +45,6 @@ match({ejpet, Backend, Fun}, JSON) ->
     Node = decode(JSON, Backend),
     case Fun(Node) of
         {true, Captures} ->
-            io:format("Captures: ~p~n", [Captures]),
             {true, [{Name, encode(Capture, Backend)} || {Name, Capture} <- Captures]};
         R ->
             R

@@ -78,6 +78,8 @@ tokenize([$" | T], State = [state_root | _], Acc) ->
     tokenize(T, [{state_string, ""} | State], Acc);
 tokenize([$_ | T], [{state_string, String} | Tail], Acc) ->
     tokenize(T, [{state_string, [$_ | String]} | Tail], Acc);
+tokenize([$. | T], [{state_string, String} | Tail], Acc) ->
+    tokenize(T, [{state_string, [$. | String]} | Tail], Acc);
 tokenize([$\s | T], [{state_string, String} | Tail], Acc) ->
     tokenize(T, [{state_string, [$\s | String]} | Tail], Acc);
 tokenize([V | T], [{state_string, String} | Tail], Acc) when V >= $A, V =< $Z ->

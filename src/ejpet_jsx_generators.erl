@@ -211,6 +211,10 @@ generate_matcher({number, Number}) ->
                     {false, []}
             end
     end;
+generate_matcher(any)->
+    fun(What) ->
+            {true, []}
+    end;
 generate_matcher(What) when What == true;
                             What == false;
                             What == null ->
