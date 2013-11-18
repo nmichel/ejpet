@@ -165,7 +165,7 @@ generate_matcher({iterable, Conditions}) ->
                     {false, []}
             end;
        (_) ->
-            false
+            {false, []}
     end;
 
 %% ----- Descedant
