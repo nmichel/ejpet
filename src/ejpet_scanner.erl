@@ -56,6 +56,11 @@ tokenize([$n, $u, $l, $l | T], State = [state_root | _], Acc) ->
 
 tokenize([$?, $< | T], State = [state_root | _], Acc) ->
     tokenize(T, [{state_capture, []} | State], Acc);
+tokenize([$#, $" | T], State = [state_root | _], Acc) ->
+    tokenize(T, [{state_string, ""}, {state_pattern} | State], Acc);
+tokenize([$" | T], State = [state_root | _], Acc) ->
+    tokenize(T, [{state_string, ""} | State], Acc);
+
 tokenize([$> | T], [{state_capture, Name = [_|_]} | Tail], Acc) ->
     tokenize(T, Tail, [{capture, lists:reverse(Name)} | Acc]);
 tokenize([$_ | T], [{state_capture, Name} | Tail], Acc) ->
@@ -74,8 +79,6 @@ tokenize([V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 -> %%
 tokenize(T, [{state_number, Num} | Tail], Acc) ->
     tokenize(T, Tail, [{number, list_to_integer(lists:reverse(Num))} | Acc]);
 
-tokenize([$" | T], State = [state_root | _], Acc) ->
-    tokenize(T, [{state_string, ""} | State], Acc);
 tokenize([$_ | T], [{state_string, String} | Tail], Acc) ->
     tokenize(T, [{state_string, [$_ | String]} | Tail], Acc);
 tokenize([$. | T], [{state_string, String} | Tail], Acc) ->
@@ -88,5 +91,7 @@ tokenize([V | T], [{state_string, String} | Tail], Acc) when V >= $a, V =< $z ->
     tokenize(T, [{state_string, [V | String]} | Tail], Acc);
 tokenize([V | T], [{state_string, String} | Tail], Acc) when V >= $0, V =< $9 ->
     tokenize(T, [{state_string, [V | String]} | Tail], Acc);
+tokenize([$" | T], [{state_string, String}, {state_pattern} | Tail], Acc) ->
+    tokenize(T, Tail, [{regex, lists:reverse(String)} | Acc]);
 tokenize([$" | T], [{state_string, String} | Tail], Acc) ->
     tokenize(T, Tail, [{string, lists:reverse(String)} | Acc]).

@@ -25,6 +25,8 @@ expr([Item = {number, _Value} | Tail]) ->
     {Tail, Item};
 expr([Item = {string, _String} | Tail]) ->
     {Tail, Item};
+expr([Item = {regex, _String} | Tail]) ->
+    {Tail, Item};
 expr([double_star_slash | Tail]) ->
     {R, Expr} = pattern(Tail),
     {R, {descendant, [Expr]}};

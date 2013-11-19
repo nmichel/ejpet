@@ -41,7 +41,9 @@ tokenize_test_() ->
              {"<\"foo\"{_:42[]}:**/>",
               [open_angle_brace, {string, "foo"}, open_curvy_brace, underscore, column, {number, 42}, open_square_brace, close_square_brace, close_curvy_brace, column, double_star_slash, close_angle_brace]},
              {"?<my_var1>",
-              [{capture, "my_var1"}]}
+              [{capture, "my_var1"}]},
+             {"\"string\"#\"regex\"",
+              [{string, "string"}, {regex, "regex"}]}
             ],
     [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr) =:= Expected))} || {Expr, Expected} <- Tests].
 

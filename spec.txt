@@ -13,7 +13,9 @@ Expr -> '{' [Pair (',' Pair)*] '}'
          | "null"
          | Number
          | String
+         | Regex
 Pair    -> String ':' (Pattern | '_')
          | '_' ':' Pattern
 Number  -> [0-9]+
+Regex   -> '#' String
 String  -> '"' [a-zA-Z_ 0-9]* '"'
