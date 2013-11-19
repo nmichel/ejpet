@@ -81,6 +81,10 @@ tokenize(T, [{state_number, Num} | Tail], Acc) ->
 
 tokenize([$_ | T], [{state_string, String} | Tail], Acc) ->
     tokenize(T, [{state_string, [$_ | String]} | Tail], Acc);
+tokenize([$^ | T], [{state_string, String} | Tail], Acc) ->
+    tokenize(T, [{state_string, [$^ | String]} | Tail], Acc);
+tokenize([$$ | T], [{state_string, String} | Tail], Acc) ->
+    tokenize(T, [{state_string, [$$ | String]} | Tail], Acc);
 tokenize([$. | T], [{state_string, String} | Tail], Acc) ->
     tokenize(T, [{state_string, [$. | String]} | Tail], Acc);
 tokenize([$\s | T], [{state_string, String} | Tail], Acc) ->

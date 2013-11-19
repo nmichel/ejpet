@@ -1,3 +1,5 @@
+%% -*- coding: utf-8 -*-
+
 -module(ejpet_tests).
 -author('nicolas.michel.lava@gmail.com').
 
@@ -170,7 +172,7 @@ run_test_() ->
     {
         \"number\": 4,
         \"lcn\": 19,
-        \"name\": \"France Ã\",
+        \"name\": \"France Ã”\",
         \"sap_group\": \"\",
         \"ip_multicast\": \"239.100.10.4\",
         \"port_multicast\": 1234,
@@ -273,7 +275,7 @@ mumu_test_deactivate() ->
     Node = jsx:decode(Data),
     O = ejpet:compile("[*, {\"ip_multicast\":\"239.100.10.4\",
                             \"pcr_pid\":(?<pcr>_),
-                            \"pids\":<{\"language\": \"fra\",
+                            \"pids\":<{\"language\": #\"^fr\",
                                        \"number\": (?<apid>_),
                                        \"type\": (?<acodec>_)},
                                       {\"type\": (?<vcodec>#\"Video\"),
