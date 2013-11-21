@@ -6,8 +6,17 @@
 
 tokenize_test_() ->
     Tests = [
-             {"42",
-              [{number, 42}]},
+             {"42", [{number, 42}]},
+             {"42.0", [{number, 42.0}]},
+             {"42.24", [{number, 42.24}]},
+             {"42.0", [{number, 42.0}]},
+             {"042.0", [{number, 42.0}]},
+             {"-42.0", [{number, -42.0}]},
+             {"+42.0", [{number, 42.0}]},
+             {"+42e2", [{number, 4200}]},
+             {"-0.00314159e3", [{number, -3.14159}]},
+             {"-314.159E-2", [{number, -3.14159}]},
+             {"-314.159e+2", [{number, -31415.9}]},
              {"\"42\"",
               [{string, "42"}]},
              {"true",
@@ -45,6 +54,6 @@ tokenize_test_() ->
              {"\"string\"#\"regex\"",
               [{string, "string"}, {regex, "regex"}]}
             ],
-    [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr) =:= Expected))} || {Expr, Expected} <- Tests].
+    [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr) == Expected))} || {Expr, Expected} <- Tests].
 
 -endif.

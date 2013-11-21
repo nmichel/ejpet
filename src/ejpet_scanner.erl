@@ -72,12 +72,53 @@ tokenize([V | T], [{state_capture, Name} | Tail], Acc) when V >= $a, V =< $z ->
 tokenize([V | T], [{state_capture, Name} | Tail], Acc) when V >= $0, V =< $9 ->
     tokenize(T, [{state_capture, [V | Name]} | Tail], Acc);
 
-tokenize([V | T], State = [state_root | _], Acc) when V >= $0, V =< $9 -> %% unroll
+tokenize([$-, V | T], State = [state_root | _], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_number, [V, $-]} | State], Acc);
+tokenize([$+, V | T], State = [state_root | _], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_number, [V, $+]} | State], Acc);
+tokenize([V | T], State = [state_root | _], Acc) when V >= $0, V =< $9 ->
     tokenize(T, [{state_number, [V]} | State], Acc);
-tokenize([V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 -> %% unroll
+
+tokenize([V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 ->
     tokenize(T, [{state_number, [V | Num]} | Tail], Acc);
+tokenize([$., V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_decimal, [V, $. | Num]} | Tail], Acc);
+tokenize([$e, $+, V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $+, $e, $0, $. | Num]} | Tail], Acc);
+tokenize([$e, $-, V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $-, $e, $0, $. | Num]} | Tail], Acc);
+tokenize([$e, V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $+, $e, $0, $. | Num]} | Tail], Acc);
+tokenize([$E, $+, V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $+, $E, $0, $. | Num]} | Tail], Acc);
+tokenize([$E, $-, V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $-, $E, $0, $. | Num]} | Tail], Acc);
+tokenize([$E, V | T], [{state_number, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $+, $E, $0, $. | Num]} | Tail], Acc);
 tokenize(T, [{state_number, Num} | Tail], Acc) ->
     tokenize(T, Tail, [{number, list_to_integer(lists:reverse(Num))} | Acc]);
+
+tokenize([V | T], [{state_decimal, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_decimal, [V | Num]} | Tail], Acc);
+tokenize([$e, $+, V | T], [{state_decimal, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $+, $e | Num]} | Tail], Acc);
+tokenize([$e, $-, V | T], [{state_decimal, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $-, $e | Num]} | Tail], Acc);
+tokenize([$e, V | T], [{state_decimal, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $+, $e | Num]} | Tail], Acc);
+tokenize([$E, $+, V | T], [{state_decimal, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $+, $E | Num]} | Tail], Acc);
+tokenize([$E, $-, V | T], [{state_decimal, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $-, $E | Num]} | Tail], Acc);
+tokenize([$E, V | T], [{state_decimal, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V, $+, $E | Num]} | Tail], Acc);
+tokenize(T, [{state_decimal, Num} | Tail], Acc) ->
+    tokenize(T, Tail, [{number, list_to_float(lists:reverse(Num))} | Acc]);
+
+tokenize([V | T], [{state_frac, Num} | Tail], Acc) when V >= $0, V =< $9 ->
+    tokenize(T, [{state_frac, [V | Num]} | Tail], Acc);
+tokenize(T, [{state_frac, Num} | Tail], Acc) ->
+    tokenize(T, Tail, [{number, list_to_float(lists:reverse(Num))} | Acc]);
 
 tokenize([$_ | T], [{state_string, String} | Tail], Acc) ->
     tokenize(T, [{state_string, [$_ | String]} | Tail], Acc);

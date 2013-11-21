@@ -126,7 +126,7 @@ Expression syntax
 | `null` | `null` | |
 | `"string"` | the string `"string"` | restricted to [a-zA-Z0-9$^ _.]+ | 
 | `#"regex"` | any string matching regex `"regex"` | restricted to [a-zA-Z0-9$^ _.]+ |
-| `number` | the number `number` e.g. (`42`) | restricted to [0-9]+ |
+| `number` | the number `number` e.g. (`42`, `3.14159`, `-3395.1264e-22` ) | |
 | `{ kv* }` | object for which all kv (key/value) patterns are matched | Order does not matter |
 | `[ item* (, *)?]` | list for which all item patterns are matched | Order DOES matter |
 | `< value* >` | value set (list, or object values) for which all value patterns are matched | Order does not matter |
@@ -201,5 +201,3 @@ Missing
 =====
 
 Currently only a small subset of characters is allowed in string and regexp, without utf8 support.
-
-Numbers are limited to positive integers.
