@@ -2,6 +2,8 @@ ejpet
 =====
 Matching JSON nodes in Erlang.
 
+[![Build Status](https://travis-ci.org/nmichel/ejpet.png)](https://travis-ci.org/nmichel/ejpet)
+
 What for ?
 =====
 
