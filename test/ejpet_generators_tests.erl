@@ -216,13 +216,13 @@ generate_test_list(TestDescs) ->
 
 generate_test_list(TestDescs, Backend) ->
     lists:reverse(
-      lists:foldl(fun({Pattern, T}, Acc) ->
+      lists:foldl(fun({Pattern, T}, FnAcc) ->
                           %% Produce the matcher
                           %% 
                           {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
-                          F = (ejpet:generator(Backend)):generate_matcher(AST),
+                          F = (ejpet:generator(Backend)):generate_matcher(AST, []),
 
-                          lists:foldl(fun ({Node, Expected = {ExpStatus, ExpCaptures}}, Acc) ->
+                          lists:foldl(fun ({Node, Expected = {ExpStatus, _ExpCaptures}}, Acc) ->
                                               TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(ExpStatus),
 
                                               %% Execute the test
@@ -238,8 +238,8 @@ generate_test_list(TestDescs, Backend) ->
                                               RefCaptures = [{VarName, ejpet:encode(ejpet:decode(Cap, ?REF_BACKEND), ?REF_BACKEND)} || {VarName, Cap} <- JSONCaptures],
 
                                       
-                                              [{TestName, ?_test(?assert({Status, JSONCaptures} == Expected))} | Acc]
-                                      end, Acc, T)
+                                              [{TestName, ?_test(?assert({Status, RefCaptures} == Expected))} | Acc]
+                                      end, FnAcc, T)
                   end, [], TestDescs)).
 
 -endif.

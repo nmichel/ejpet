@@ -129,7 +129,9 @@ Expression syntax
 | `number` | the number `number` e.g. (`42`, `3.14159`, `-3395.1264e-22` ) | |
 | `{ kv* }` | object for which all kv (key/value) patterns are matched | Order does not matter |
 | `[ item* (, *)?]` | list for which all item patterns are matched | Order DOES matter |
-| `< value* >` | value set (list, or object values) for which all value patterns are matched | Order does not matter |
+| `< value* >` | value set (list, or object values) for which all value patterns are matched | Order does not matter 
+
+
 
 `kv` may be one of the form
 * _:pattern
@@ -144,10 +146,69 @@ Expression syntax
 
 `kv`, `item` and `value` are separated by `,`.
 
+### Notes
+
+`number` matching may be strict or loose, depending on an option passed are compile-time.
+
+```erlang
+1> ejpet:match("42", <<"42.0">>).
+{true, []}
+2> ejpet:match("42", <<"42.0">>, [{number_strict_match, true}]).
+{false, []}
+```
+
 Captures
 ----
 
 Every pattern `p` can be captured by simply substituing it by `(?<variable_name>p)`.
+
+# API
+
+```erlang
+epm() = {ejpet, term(), term()}
+expr_src() = string()
+compile_option() = {number_strict_match, (true|false)}
+
+json_src() = binary()
+json_term() = jsx_term() | jiffy_term() | mochijson2_term()
+
+match_res() = {match_stat(), [capture()]
+match_stat() = true | false
+capture() = {capture_name(), capture_value()}
+capture_name() = string()
+capture_value() = json_term() | binary()
+
+ejpet:compile(Expr, Backend, Options) -> epm()
+
+  Expr = expr_src()
+  Backend = jsx | jiffy | mochijson2
+  Options = [Option]
+  Option = compile_option()
+
+ejpet:compile(Expr) -> epm()
+
+  Same as ejpet:compile(Expr, jsx, [])
+  
+ejpet:run(EPM, JSONTerm) -> match_res()
+
+  EPM = epm()
+  JSONTerm = json_term()
+ 
+ejpet:match(Expr, JSONText, Backend, Options) -> match_res()
+
+  Expr = expr_src()
+  Backend = jsx | jiffy | mochijson2
+  Options = [Option]
+  Option = compile_option()
+
+ejpet:match(Expr, JSONText, Options) -> match_res()
+
+  Same as ejpet:match(Expr, JSONText, jsx, Options)
+  
+ejpet:match(Expr, JSONText) -> match_res()
+
+  Same as ejpet:match(Expr, JSONText, jsx, [])
+```
 
 # Examples
 
@@ -195,8 +256,48 @@ Every pattern `p` can be captured by simply substituing it by `(?<variable_name>
 | `**/"42"` | `["42"]`, `[true, "42"]`, `["foo", ["42", true], {}]`, `[{}, {"foo": "42"}, true]`, `{"bar": "42"}`, `{"bar": {"foo": "42"}}` | `"42"`, `{"foo": 42}`, `[42]` | `ejpet:match("**/\"42\"", <<"[true, [null, {\"foo\": \"42\"}, \"bar\"], {}]">>).` |
 | `**/**/"42"` | `[["42"]]`, `[{}, {"foo": "42"}, true]`, `{"bar": {"foo": "42"}}` | `["42"]`, `{"bar": "42"}` | `ejpet:match("**/**/\"42\"", <<"[{\"foo\":\"42\"}]">>).` |
 
+## Captures
 
-    
+| Expression | Test | Capture(s) | Code snippet |
+---|---|---|----
+| `**/(?<subnode>{_:42})` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | subnode: `{"foo":42,"bar":{}}` | `ejpet:match("**/(?<subnode>{_:42})", <<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>).`
+| `(?<all>**/(?<subnode>{_:42}))` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | all: `[{"foo":null},{"foo":42,"bar":{}}]}`,subnode: `{"foo":42,"bar":{}}` | `ejpet:match("(?<all>**/(?<subnode>{_:42}))", <<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>).`
+
+### Notes
+
+In the arry above, captured values are expressed "abstract JSON node", for illustration purpose.
+The real captured values depends on the API function used, and may be:
+
+* serialized JSON nodes (as in the "Code snippet" column),
+
+```erlang
+1> ejpet:match("(?<all>**/(?<subnode>{_:42}))", <<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>).
+{true,[{"all",
+        <<"[{\"foo\":null},{\"foo\":42,\"bar\":{}}]">>},
+       {"subnode",<<"{\"foo\":42,\"bar\":{}}">>}]}
+```
+
+* (jsx | jiffy | mochijson2) JSON value, depending on the backend, for easier further processing.
+
+```erlang
+1> JSX = ejpet:compile("(?<all>**/(?<subnode>{_:42}))", jsx, []).
+{ejpet,jsx,#Fun<ejpet_jsx_generators.19.98422695>}
+2> ejpet:run(JSX, (ejpet:backend(JSX)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>)).
+{true,[{"all",
+        [[{<<"foo">>,null}],[{<<"foo">>,42},{<<"bar">>,[{}]}]]},
+       {"subnode",[{<<"foo">>,42},{<<"bar">>,[{}]}]}]}
+
+39> Mochi = ejpet:compile("(?<all>**/(?<subnode>{_:42}))", mochijson2, []).
+{ejpet,mochijson2,
+       #Fun<ejpet_mochijson2_generators.19.110863078>}
+40> ejpet:run(Mochi, (ejpet:backend(Mochi)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>)).
+{true,[{"all",
+        [{struct,[{<<"foo">>,null}]},
+         {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]},
+       {"subnode",
+        {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}}]}
+```
+
 Missing
 =====
 

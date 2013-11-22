@@ -254,7 +254,7 @@ run_test_() ->
     lists:foldl(fun({Pattern, JSON, Expected}, Acc) ->
                         %% Execute the test, using the specified backend
                         %% 
-                        O = ejpet:compile(Pattern, ?BACKEND),
+                        O = ejpet:compile(Pattern, ?BACKEND, []),
                         {Status, Captures} = ejpet:run(O, (ejpet:backend(O)):decode(JSON)),
 
                         %% Transform captures to text

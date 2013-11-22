@@ -3,14 +3,20 @@
 
 -export([decode/2, encode/2,
          generator/1,
-         compile/1, compile/2,
+         compile/1, compile/3,
          backend/1,
          run/2,
-         match/2, match/3]).
+         match/2, match/3, match/4]).
 
 
 -define(DEFAULT_BACKEND, jsx).
+-define(DEFAULT_OPTIONS, []).
 
+
+%% -----
+%% Generator options
+%% {number_strict_match, (true|false)}
+%% -----
 
 decode(JSON, Backend) when is_binary(JSON) ->
     Backend:decode(JSON).
@@ -27,11 +33,11 @@ generator(Backend) when is_atom(Backend) ->
     list_to_atom("ejpet_" ++ atom_to_list(Backend) ++ "_generators").
 
 compile(Pattern) ->
-    compile(Pattern, ?DEFAULT_BACKEND).
+    compile(Pattern, ?DEFAULT_BACKEND, ?DEFAULT_OPTIONS).
 
-compile(Pattern, Backend) ->
+compile(Pattern, Backend, Options) ->
     {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
-    {ejpet, Backend, (generator(Backend)):generate_matcher(AST)}.
+    {ejpet, Backend, (generator(Backend)):generate_matcher(AST, Options)}.
 
 backend({ejpet, Backend, _Fun}) ->
     Backend.
@@ -50,8 +56,11 @@ match({ejpet, Backend, Fun}, JSON) ->
             R
     end;
 match(Pattern, JSON) ->
-    match(Pattern, JSON, ?DEFAULT_BACKEND).
+    match(Pattern, JSON, ?DEFAULT_BACKEND, ?DEFAULT_OPTIONS).
 
-match(Pattern, JSON, Backend) ->
-    Opaque = compile(Pattern, Backend),
+match(Pattern, JSON, Options) ->
+    match(Pattern, JSON, ?DEFAULT_BACKEND, Options).
+    
+match(Pattern, JSON, Backend, Options) ->
+    Opaque = compile(Pattern, Backend, Options),
     match(Opaque, JSON).

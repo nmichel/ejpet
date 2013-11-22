@@ -1,12 +1,12 @@
 -module(ejpet_mochijson2_generators).
 
--export([generate_matcher/1]).
+-export([generate_matcher/2]).
 
 
 %% ---- Capture 
 
-generate_matcher({capture, Pattern, Mode}) ->
-    Matcher = generate_matcher(Pattern),
+generate_matcher({capture, Pattern, Mode}, Options) ->
+    Matcher = generate_matcher(Pattern, Options),
     fun(JSON) ->
             case Matcher(JSON) of
                 {true, Captures} ->
@@ -18,14 +18,16 @@ generate_matcher({capture, Pattern, Mode}) ->
 
 %% ---- Object
 
-generate_matcher({object, any}) ->
+generate_matcher({object, any}, _Options) ->
     fun({struct, Pairs}) when is_list(Pairs) ->
             {true, []};
        (_) ->
             {false, []}
     end;
-generate_matcher({object, Conditions}) ->
-    PairMatchers = lists:map(fun generate_matcher/1, Conditions),
+generate_matcher({object, Conditions}, Options) ->
+    PairMatchers = lists:map(fun(C) ->
+                                     generate_matcher(C, Options)
+                             end, Conditions),
     fun({struct, Items}) when is_list(Items) ->
             R = [continue_until_match(Items, PairMatcher) || PairMatcher <- PairMatchers],
             {AccCaptures, AccFailedCount} = 
@@ -43,23 +45,23 @@ generate_matcher({object, Conditions}) ->
        (_) ->
             {false, []}
     end;
-generate_matcher({pair, any, ValMatcherDesc}) ->
-    ValMatcher = generate_matcher(ValMatcherDesc),
+generate_matcher({pair, any, ValMatcherDesc}, Options) ->
+    ValMatcher = generate_matcher(ValMatcherDesc, Options),
     fun({_Key, Val}) ->
             ValMatcher(Val);
        (_) ->
             {false, []}
     end;
-generate_matcher({pair, KeyMatcherDesc, any}) ->
-    KeyMatcher = generate_matcher(KeyMatcherDesc),
+generate_matcher({pair, KeyMatcherDesc, any}, Options) ->
+    KeyMatcher = generate_matcher(KeyMatcherDesc, Options),
     fun({Key, _Val}) ->
             KeyMatcher(Key);
        (_) ->
             {false, []}
     end;
-generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}) ->
-    KeyMatcher = generate_matcher(KeyMatcherDesc),
-    ValMatcher = generate_matcher(ValMatcherDesc),
+generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}, Options) ->
+    KeyMatcher = generate_matcher(KeyMatcherDesc, Options),
+    ValMatcher = generate_matcher(ValMatcherDesc, Options),
     fun({Key, Val}) ->
             {S1, Cap1} = KeyMatcher(Key),
             {S2, Cap2} = ValMatcher(Val),
@@ -75,29 +77,29 @@ generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}) ->
 
 %% ---- List
 
-generate_matcher({list, empty}) ->
+generate_matcher({list, empty}, _Options) ->
     fun([]) ->
             {true, []};
        (_) ->
             {false, []}
     end;
 
-generate_matcher({list, any}) ->
+generate_matcher({list, any}, _Options) ->
     fun(Items) when is_list(Items) ->
             {true, []};
        (_) ->
             {false, []}
     end;
-generate_matcher({list, Conditions}) ->
+generate_matcher({list, Conditions}, Options) ->
     ItemMatchers = lists:map(fun({find, Expr}) ->
-                                     Matcher = generate_matcher(Expr),
+                                     Matcher = generate_matcher(Expr, Options),
                                      fun(Items) when is_list(Items) ->
                                              continue_until_match(Items, Matcher);
                                         (_) ->
                                              {{false, []}, []}
                                      end;
                                 (Expr) ->
-                                     Matcher = generate_matcher(Expr),
+                                     Matcher = generate_matcher(Expr, Options),
                                      fun([]) ->
                                              {Matcher([]), []};
                                         ([Head|Tail]) ->
@@ -126,7 +128,7 @@ generate_matcher({list, Conditions}) ->
 
 %% ----- Iterable
 
-generate_matcher({iterable, any}) ->
+generate_matcher({iterable, any}, _Options) ->
     %% jsx represents both list and object as erlang lists.
     %% Therefore, checking if an item is an erlang list is enough to say 
     %% that it is an iterable.
@@ -139,8 +141,10 @@ generate_matcher({iterable, any}) ->
             {false, []}
     end;
 
-generate_matcher({iterable, Conditions}) ->
-    Matchers = lists:map(fun generate_matcher/1, Conditions),
+generate_matcher({iterable, Conditions}, Options) ->
+    Matchers = lists:map(fun(C) ->
+                                 generate_matcher(C, Options)
+                         end, Conditions),
     fun({struct, Items}) ->
             R = [continue_until_object_value_match(Items, Matcher) || Matcher <- Matchers],
             {AccCaptures, AccFailedCount} = 
@@ -175,8 +179,10 @@ generate_matcher({iterable, Conditions}) ->
 
 %% ----- Descedant
 
-generate_matcher({descendant, Conditions}) ->
-    Matchers = lists:map(fun generate_matcher/1, Conditions),
+generate_matcher({descendant, Conditions}, Options) ->
+    Matchers = lists:map(fun(C) ->
+                                 generate_matcher(C, Options)
+                         end, Conditions),
     fun({struct, Items}) ->
             R = [deep_continue_until_object_value_match(Items, Matcher) || Matcher <- Matchers],
             {AccCaptures, AccFailedCount} = 
@@ -211,7 +217,7 @@ generate_matcher({descendant, Conditions}) ->
 
 %% ---- Unit
 
-generate_matcher({string, String}) ->
+generate_matcher({string, String}, _Options) ->
     BinString = list_to_binary(String),
     fun(What) ->
             case What of 
@@ -221,7 +227,7 @@ generate_matcher({string, String}) ->
                     {false, []}
             end
     end;
-generate_matcher({regex, String}) ->
+generate_matcher({regex, String}, Options) ->
     %% TODO - move the production of MP into the parser, which will store a evaluation function
     %% instead of String. Compile options should be passed to the parser, and also the runtime options.
     %% 
@@ -238,22 +244,34 @@ generate_matcher({regex, String}) ->
        (_) ->
             {false, []}
     end;
-generate_matcher({number, Number}) ->
-    fun(What) ->
-            case What of 
-                Number ->
-                    {true, []};
-                (_) ->
-                    {false, []}
+generate_matcher({number, Number}, Options) ->
+    case proplists:get_value(number_strict_match, Options) of 
+        true ->
+            fun(What) ->
+                    case What of 
+                        Number ->
+                            {true, []};
+                        _ ->
+                            {false, []}
+                    end
+            end;
+        _ ->
+            fun(What) ->
+                    case What == Number of 
+                        true ->
+                            {true, []};
+                        _ ->
+                            {false, []}
+                    end
             end
     end;
-generate_matcher(any)->
+generate_matcher(any, _Options) ->
     fun(_) ->
             {true, []}
     end;
-generate_matcher(What) when What == true;
-                            What == false;
-                            What == null ->
+generate_matcher(What, _Options) when What == true;
+                                      What == false;
+                                      What == null ->
     fun(Item) ->
             case Item of
                 What ->
@@ -262,7 +280,7 @@ generate_matcher(What) when What == true;
                     {false, []}
             end
     end;
-generate_matcher(eol) ->
+generate_matcher(eol, _Options) ->
     fun([]) ->
             {true, []};
        (_) ->
