@@ -36,7 +36,7 @@ compile(Pattern) ->
     compile(Pattern, ?DEFAULT_BACKEND, ?DEFAULT_OPTIONS).
 
 compile(Pattern, Backend, Options) ->
-    {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+    {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, Options)),
     {ejpet, Backend, (generator(Backend)):generate_matcher(AST, Options)}.
 
 backend({ejpet, Backend, _Fun}) ->

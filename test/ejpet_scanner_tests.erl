@@ -54,6 +54,6 @@ tokenize_test_() ->
              {"\"string\"#\"regex\"",
               [{string, "string"}, {regex, "regex"}]}
             ],
-    [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr) == Expected))} || {Expr, Expected} <- Tests].
+    [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr, []) == Expected))} || {Expr, Expected} <- Tests].
 
 -endif.

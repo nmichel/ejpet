@@ -219,7 +219,7 @@ generate_test_list(TestDescs, Backend) ->
       lists:foldl(fun({Pattern, T}, FnAcc) ->
                           %% Produce the matcher
                           %% 
-                          {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+                          {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, [])),
                           F = (ejpet:generator(Backend)):generate_matcher(AST, []),
 
                           lists:foldl(fun ({Node, Expected = {ExpStatus, _ExpCaptures}}, Acc) ->

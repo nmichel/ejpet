@@ -13,7 +13,7 @@ capture_test_() ->
               {capture,{number,42},positional}}
             ],
     lists:foldl(fun({Pattern, Expected}, Acc) ->
-                        {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern)),
+                        {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, [])),
                         [{Pattern, ?_test(?assert(AST =:= Expected))} | Acc]
                 end, [], Tests).
 
