@@ -217,28 +217,28 @@ generate_matcher({descendant, Conditions}, Options) ->
 
 %% ---- Unit
 
-generate_matcher({string, String}, _Options) ->
-    BinString = list_to_binary(String),
+generate_matcher({string, BinString}, _Options) ->
     fun(What) ->
             case What of 
-                BinString->
+                BinString ->
                     {true, []};
                 (_) ->
                     {false, []}
             end
     end;
-generate_matcher({regex, String}, Options) ->
+generate_matcher({regex, BinString}, Options) ->
     %% TODO - move the production of MP into the parser, which will store a evaluation function
     %% instead of String. Compile options should be passed to the parser, and also the runtime options.
     %% 
-    BinString = list_to_binary(String),
-    Options = [],
     {ok, MP} = re:compile(BinString, Options),
     fun(What) when is_list(What); is_binary(What) ->
-            case re:run(What, MP) of 
-                {match, _}->
+            try re:run(What, MP) of 
+                {match, _} ->
                     {true, []};
                 _ ->
+                    {false, []}
+            catch 
+                _:_ ->
                     {false, []}
             end;
        (_) ->

@@ -126,8 +126,8 @@ Expression syntax
 | `true` | `true` | |
 | `false` | `false` | |
 | `null` | `null` | |
-| `"string"` | the string `"string"` | restricted to [a-zA-Z0-9$^ _.]+ | 
-| `#"regex"` | any string matching regex `"regex"` | restricted to [a-zA-Z0-9$^ _.]+ |
+| `"string"` | the string `"string"` | UTF-8 encoded string (with escaping) | 
+| `#"regex"` | any string matching regex `"regex"` | UTF-8 encoded string (no escaping) |
 | `number` | the number `number` e.g. (`42`, `3.14159`, `-3395.1264e-22` ) | |
 | `{ kv* }` | object for which all kv (key/value) patterns are matched | Order does not matter |
 | `[ item* (, *)?]` | list for which all item patterns are matched | Order DOES matter |
@@ -148,7 +148,9 @@ Expression syntax
 
 `kv`, `item` and `value` are separated by `,`.
 
-### Notes
+## Notes
+
+### Numbers
 
 `number` matching may be strict or loose, depending on an option passed are compile-time.
 
@@ -158,6 +160,23 @@ Expression syntax
 2> ejpet:match("42", <<"42.0">>, [{number_strict_match, true}]).
 {false, []}
 ```
+
+### Strings and Regex
+
+`string` and `regex` are UTF-8 encoded byte streams.
+
+They may contain escaping sequences, as in `"\\b"`, or `"\u00E9"`. When found in a `string` these sequences are interpreted by default (but they may be left as-is with option `string_apply_escape_sequence` set to `false`). Found in `regex` they are not interpreted.
+
+```erlang
+3> ejpet:match(<<"\"\\u00E9\""/utf8>>, <<"\"\x{00E9}\""/utf8>>, [{string_apply_escape_sequence, true}]).
+{true,[]}
+4> ejpet:match(<<"\"\\u00E9\""/utf8>>, <<"\"\x{00E9}\""/utf8>>, [{string_apply_escape_sequence, false}]).
+{false, []}
+5> ejpet:match(<<"\"\\u00E9\""/utf8>>, <<"\"\\\\u00E9\""/utf8>>, [{string_apply_escape_sequence, false}]).
+{true, []}
+```
+
+Codepoint produced by evaluating an escape sequence of the form `\uABCD` is *NOT* checked. One can insert any codepoint, valid or not, in a string or regex.
 
 Captures
 ----
@@ -300,7 +319,3 @@ The real captured values depends on the API function used, and may be:
         {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}}]}
 ```
 
-Missing
-=====
-
-Currently only a small subset of characters is allowed in string and regexp, without utf8 support.

@@ -211,6 +211,24 @@ capture_test_() ->
             ],
     generate_test_list(Tests).
 
+utf8_test_() ->
+    Tests = [
+             {"{_:[(?<value>_)]}",
+              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", <<"\"漂亮的綠色汽車\""/utf8>>}]}},
+               {<<"{\"bar\": [\"éléphant\"]}"/utf8>>, {true, [{"value", <<"\"éléphant\""/utf8>>}]}}
+              ]},
+             {<<"{_:[(?<value>#\"漂.*色\")]}"/utf8>>,
+              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", <<"\"漂亮的綠色汽車\""/utf8>>}]}},
+               {<<"{\"foo\": [\"!漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", <<"\"!漂亮的綠色汽車\""/utf8>>}]}},
+               {<<"{\"foo\": [\"!漂亮的綠?汽車\"]}"/utf8>>, {false, []}}
+              ]},
+             {<<"{_:[(?<value>#\"^漂\")]}"/utf8>>,
+              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", <<"\"漂亮的綠色汽車\""/utf8>>}]}},
+               {<<"{\"foo\": [\"!漂亮的綠色汽車\"]}"/utf8>>, {false, []}}
+              ]}
+            ],
+    generate_test_list(Tests).
+
 generate_test_list(TestDescs) ->
     [generate_test_list(TestDescs, Backend) || Backend <- ?BACKENDS].
 
@@ -223,7 +241,14 @@ generate_test_list(TestDescs, Backend) ->
                           F = (ejpet:generator(Backend)):generate_matcher(AST, []),
 
                           lists:foldl(fun ({Node, Expected = {ExpStatus, _ExpCaptures}}, Acc) ->
-                                              TestName = Pattern ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(ExpStatus),
+                                              PatternPart = 
+                                                  if 
+                                                      is_binary(Pattern) ->
+                                                          unicode:characters_to_list(Pattern, utf8);
+                                                      true ->
+                                                           Pattern
+                                                  end,
+                                              TestName = PatternPart ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(ExpStatus),
 
                                               %% Execute the test
                                               %% 

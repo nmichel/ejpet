@@ -1,1 +1,1 @@
-* 2013-11-13 - UTF8 string matchers.
+* 2013-11-22 - compile option to indicate the type of capture names : atom, string(), binary()

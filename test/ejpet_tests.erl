@@ -10,7 +10,8 @@
 -define(REF_BACKEND, jsx).
 
 run_test_() ->
-    Tests = [{"**/42",
+    Tests = [
+             {"**/42",
               <<"42"/utf8>>,
               {false, []}},
              {"(?<full>**/42)",
@@ -25,7 +26,7 @@ run_test_() ->
               {"**/(?<toto>[42])",
                <<"[[[[[[[[[[[[[[[[[[[[[[[[1, 42]]]]]]]]]]]]]]]]]]]]]]]]"/utf8>>,
                {false, []}},
-             {"[*, {\"ip_multicast\":(?<ip>_)}, *]",
+             {<<"[*, {\"name\": \"France \\u00D4\", \"ip_multicast\":(?<ip>_)}, *]">>,
               <<"[
     {
         \"number\": 1,
@@ -248,7 +249,7 @@ run_test_() ->
         ]
     }
 ]"/utf8>>,
-              {true, [{"ip", <<"\"239.100.10.1\"">>}]}}
+              {true, [{"ip", <<"\"239.100.10.4\"">>}]}}
              ],
 
     lists:foldl(fun({Pattern, JSON, Expected}, Acc) ->
