@@ -229,6 +229,74 @@ utf8_test_() ->
             ],
     generate_test_list(Tests).
 
+injection_test_() ->
+    Tests = [
+             {"(!<what>number)",
+              [{<<"42">>, [{<<"what">>, 42}], {true, []}},
+               {<<"42">>, [{<<"what">>, 0}], {false, []}},
+               {<<"40">>, [{<<"what">>, 42}], {false, []}},
+               {<<"false">>, [{<<"what">>, 42}], {false, []}}
+              ]},
+             {"(!<what>boolean)",
+              [{<<"true">>, [{<<"what">>, true}], {true, []}},
+               {<<"true">>, [{<<"what">>, false}], {false, []}},
+               {<<"false">>, [{<<"what">>, false}], {true, []}},
+               {<<"false">>, [{<<"what">>, true}], {false, []}},
+               {<<"42">>, [{<<"what">>, true}], {false, []}},
+               {<<"true">>, [{<<"what">>, 27}], {false, []}}
+              ]},
+             {"(!<what>string)",
+              [{<<"\"foo\"">>, [{<<"what">>, <<"foo">>}], {true, []}},
+               {<<"\"foo\"">>, [{<<"bar">>, false}], {false, []}},
+               {<<"\"漂亮的綠色汽車\"">>, [{<<"what">>, <<"漂亮的綠色汽車">>}], {true, []}},
+               {<<"\"漂亮的綠色汽車\"">>, [{<<"what">>, <<"漂亮的綠色">>}], {false, []}},
+               {<<"42">>, [{<<"what">>, <<"漂亮的綠色">>}], {false, []}},
+               {<<"\"漂亮的綠色汽車\"">>, [{<<"what">>, 42}], {false, []}}
+              ]},
+             {"{_:[(!<what>number)]}",
+              [{<<"{\"foo\": [42]}">>, [{<<"what">>, 42}], {true, []}},
+               {<<"{\"foo\": [false]}">>, [{<<"what">>, 42}], {false, []}},
+               {<<"{\"foo\": [true, 42]}">>, [{<<"what">>, 42}], {false, []}}
+              ]}
+            ],
+    generate_test_list(Tests).
+
+injection_regex_test_() ->
+    {ok, MP1} = re:compile("foo"),
+    {ok, MP2} = re:compile("^foo.*\\bbar$"),
+    Tests = [
+             {"(!<what>regex)",
+              [{<<"\"foo\"">>, [{<<"what">>, MP1}], {true, []}},
+               {<<"\"nehfoobar\"">>, [{<<"what">>, MP1}], {true, []}},
+               {<<"\"nehbar\"">>, [{<<"what">>, MP1}], {false, []}},
+               {<<"42">>, [{<<"what">>, MP1}], {false, []}},
+               {<<"{\"foo\":42}">>, [{<<"what">>, MP1}], {false, []}},
+
+               {<<"\"fooneh\\bbar\"">>, [{<<"what">>, MP2}], {true, []}},
+               {<<"\"foo\\bbar\"">>, [{<<"what">>, MP2}], {true, []}},
+               {<<"\"nehfoo\\bbar\"">>, [{<<"what">>, MP2}], {false, []}},
+               {<<"\"foo\\bbarneh\"">>, [{<<"what">>, MP2}], {false, []}}
+              ]}
+            ],
+    generate_test_list(Tests).
+
+injection_and_capture_test_() ->
+    {ok, MP1} = re:compile("^id_\\d+$"),
+    {ok, MP2} = re:compile("^grp_\\d+$"),
+    Tests = [
+             {"*/{\"sender\":(!<who>number),\"text\":(?<text>_)}",
+              [{<<"[{\"sender\":42,\"text\":\"foo\"}, {\"sender\":24,\"text\":\"bar\"}]">>, [{<<"who">>, 42}], {true, [{"text", <<"\"foo\"">>}]}},
+               {<<"[{\"sender\":42,\"text\":\"foo\"}, {\"sender\":24,\"text\":\"bar\"}]">>, [{<<"who">>, 24}], {true, [{"text", <<"\"bar\"">>}]}}
+              ]},
+             {"*/{\"sender\":(?<who>{\"name\":(!<from>regex)}),\"text\":(?<text>_)}",
+              [{<<"[{\"sender\":{\"name\": \"id_42\"},\"text\":\"foo\"}, {\"sender\":{\"name\": \"grp_42\"},\"text\":\"bar\"}]">>, [{<<"from">>, MP1}], {true, [{"text", <<"\"foo\"">>},
+                                                                                                                                                                {"who",<<"{\"name\":\"id_42\"}">>}]}},
+               {<<"[{\"sender\":{\"name\": \"id_42\"},\"text\":\"foo\"}, {\"sender\":{\"name\": \"grp_42\"},\"text\":\"bar\"}]">>, [{<<"from">>, MP2}], {true, [{"text", <<"\"bar\"">>},
+                                                                                                                                                                {"who",<<"{\"name\":\"grp_42\"}">>}]}}
+              ]}
+            ],
+    generate_test_list(Tests).
+    
 generate_test_list(TestDescs) ->
     [generate_test_list(TestDescs, Backend) || Backend <- ?BACKENDS].
 
@@ -240,19 +308,19 @@ generate_test_list(TestDescs, Backend) ->
                           {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, [])),
                           F = (ejpet:generator(Backend)):generate_matcher(AST, []),
 
-                          lists:foldl(fun ({Node, Expected = {ExpStatus, _ExpCaptures}}, Acc) ->
+                          BuildTest = fun(Node, Injected, Expected = {ExpStatus, _ExpCaptures}) ->
                                               PatternPart = 
                                                   if 
                                                       is_binary(Pattern) ->
                                                           unicode:characters_to_list(Pattern, utf8);
                                                       true ->
-                                                           Pattern
+                                                          Pattern
                                                   end,
                                               TestName = PatternPart ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(ExpStatus),
-
+                                              
                                               %% Execute the test
                                               %% 
-                                              {Status, Captures} = F(ejpet:decode(Node, Backend)),
+                                              {Status, Captures} = F(ejpet:decode(Node, Backend), Injected),
 
                                               %% Transform captures to text
                                               %% 
@@ -261,9 +329,14 @@ generate_test_list(TestDescs, Backend) ->
                                               %% Parse again and stringify captures using the reference backend
                                               %% 
                                               RefCaptures = [{VarName, ejpet:encode(ejpet:decode(Cap, ?REF_BACKEND), ?REF_BACKEND)} || {VarName, Cap} <- JSONCaptures],
-
-                                      
-                                              [{TestName, ?_test(?assert({Status, RefCaptures} == Expected))} | Acc]
+                                              
+                                              
+                                              {TestName, ?_test(?assert({Status, RefCaptures} == Expected))}
+                                      end,
+                          lists:foldl(fun({Node, Expected}, Acc) ->
+                                              [BuildTest(Node, [], Expected) | Acc];
+                                         ({Node, Injected, Expected = {ExpStatus, _ExpCaptures}}, Acc) ->
+                                              [BuildTest(Node, Injected, Expected) | Acc]
                                       end, FnAcc, T)
                   end, [], TestDescs)).
 

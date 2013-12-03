@@ -256,7 +256,7 @@ run_test_() ->
                         %% Execute the test, using the specified backend
                         %% 
                         O = ejpet:compile(Pattern, ?BACKEND, []),
-                        {Status, Captures} = ejpet:run(O, (ejpet:backend(O)):decode(JSON)),
+                        {Status, Captures} = ejpet:run((ejpet:backend(O)):decode(JSON), O),
 
                         %% Transform captures to text
                         %% 
@@ -282,6 +282,6 @@ mumu_test_deactivate() ->
                                       {\"type\": (?<vcodec>#\"Video\"),
                                        \"number\": (?<vpid>_)}>}, *]", jsx),
     
-    ejpet:run(O, Node).
+    ejpet:run(Node, O).
 
 -endif.

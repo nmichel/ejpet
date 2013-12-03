@@ -66,7 +66,9 @@ tokenize_test_() ->
              {<<"#\"\\b\\n\\r\\\\\""/utf8>>, % but not in regex
               [{regex, <<"\\b\\n\\r\\\\"/utf8>>}]},
              {<<"\"\\u00E9l\\u00E9phant\""/utf8>>,
-              [{string, <<"\x{00E9}l\x{00E9}phant"/utf8>>}]}
+              [{string, <<"\x{00E9}l\x{00E9}phant"/utf8>>}]},
+             {<<"!<foo> string number boolean regex">>,
+              [{inject, "foo"}, string, number, boolean, regex]}
             ],
     [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr, []) == Expected))} || {Expr, Expected} <- Tests].
 

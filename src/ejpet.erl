@@ -5,7 +5,7 @@
          generator/1,
          compile/1, compile/3,
          backend/1,
-         run/2,
+         run/2, run/3,
          match/2, match/3, match/4]).
 
 
@@ -42,25 +42,28 @@ compile(Pattern, Backend, Options) ->
 backend({ejpet, Backend, _Fun}) ->
     Backend.
 
-run({ejpet, _Backend, Fun}, Node) ->
-    Fun(Node).
+run(Node, EPM) ->
+    run(Node, EPM, []).
 
-match(Pattern, JSON) when is_list(JSON) ->
-    match(Pattern, list_to_binary(JSON));
-match({ejpet, Backend, Fun}, JSON) ->
-    Node = decode(JSON, Backend),
-    case Fun(Node) of
+run(Node, {ejpet, _Backend, Fun}, Params) ->
+    Fun(Node, Params).
+
+match(Subject, Pattern) ->
+    match(Subject, Pattern, ?DEFAULT_OPTIONS, []).
+
+match(Subject, Pattern, Options) ->
+    match(Subject, Pattern, Options, []).
+
+match(Subject, Pattern, Options, Params) when is_list(Subject) ->
+    match(list_to_binary(Subject), Pattern, Options, Params);
+match(Subject, {ejpet, Backend, Fun}, _Options, Params) ->
+    Node = decode(Subject, Backend),
+    case Fun(Node, Params) of
         {true, Captures} ->
             {true, [{Name, encode(Capture, Backend)} || {Name, Capture} <- Captures]};
         R ->
             R
     end;
-match(Pattern, JSON) ->
-    match(Pattern, JSON, ?DEFAULT_BACKEND, ?DEFAULT_OPTIONS).
-
-match(Pattern, JSON, Options) ->
-    match(Pattern, JSON, ?DEFAULT_BACKEND, Options).
-    
-match(Pattern, JSON, Backend, Options) ->
-    Opaque = compile(Pattern, Backend, Options),
-    match(Opaque, JSON).
+match(Subject, Pattern, Options, Params) ->
+    Opaque = compile(Pattern, ?DEFAULT_BACKEND, Options),
+    match(Subject, Opaque, Options, Params).

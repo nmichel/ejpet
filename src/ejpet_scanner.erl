@@ -62,12 +62,20 @@ tokenize(<<$\t, T/binary>>, State = [state_root | _], Acc, Config) ->
 tokenize(<<$\s, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, Acc, Config);
 
-tokenize(<<$t, $r, $u, $e, T/binary>>, State = [state_root | _], Acc, Config) ->
+tokenize(<<"true", T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [true | Acc], Config);
-tokenize(<<$f, $a, $l, $s, $e, T/binary>>, State = [state_root | _], Acc, Config) ->
+tokenize(<<"false", T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [false | Acc], Config);
-tokenize(<<$n, $u, $l, $l, T/binary>>, State = [state_root | _], Acc, Config) ->
+tokenize(<<"null", T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [null | Acc], Config);
+tokenize(<<"string", T/binary>>, State = [state_root | _], Acc, Config) ->
+    tokenize(T, State, [string | Acc], Config);
+tokenize(<<"number", T/binary>>, State = [state_root | _], Acc, Config) ->
+    tokenize(T, State, [number | Acc], Config);
+tokenize(<<"boolean", T/binary>>, State = [state_root | _], Acc, Config) ->
+    tokenize(T, State, [boolean | Acc], Config);
+tokenize(<<"regex", T/binary>>, State = [state_root | _], Acc, Config) ->
+    tokenize(T, State, [regex | Acc], Config);
 
 tokenize(<<$?, $<, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, [{state_capture, []} | State], Acc, Config);
@@ -75,6 +83,8 @@ tokenize(<<$#, $", T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, [{state_string, ""}, {state_pattern} | State], Acc, Config);
 tokenize(<<$", T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, [{state_string, ""} | State], Acc, Config);
+tokenize(<<$!, $<, T/binary>>, State = [state_root | _], Acc, Config) ->
+    tokenize(T, [{state_capture, []}, state_inject | State], Acc, Config);
 
 tokenize(<<$>, T/binary>>, [{state_capture, Name = [_|_]} | Tail], Acc, Config) ->
     tokenize(T, Tail, [{capture, lists:reverse(Name)} | Acc], Config);
@@ -86,6 +96,12 @@ tokenize(<<V, T/binary>>, [{state_capture, Name} | Tail], Acc, Config) when V >=
     tokenize(T, [{state_capture, [V | Name]} | Tail], Acc, Config);
 tokenize(<<V, T/binary>>, [{state_capture, Name} | Tail], Acc, Config) when V >= $0, V =< $9 ->
     tokenize(T, [{state_capture, [V | Name]} | Tail], Acc, Config);
+
+%% state_inject is never on top, except when the wrapped capture has been parsed.
+%% We just have to transform the token "capture", into "inject", and we are done.
+%% 
+tokenize(T, [state_inject | Tail], [{capture, Name} | Acc], Config) ->
+    tokenize(T, Tail, [{inject, Name} | Acc], Config);
 
 tokenize(<<$-, V, T/binary>>, State = [state_root | _], Acc, Config) when V >= $0, V =< $9 ->
     tokenize(T, [{state_number, [V, $-]} | State], Acc, Config);

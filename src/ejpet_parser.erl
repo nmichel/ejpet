@@ -6,6 +6,8 @@
 parse(Tokens) ->
     pattern(Tokens).
 
+pattern(Tokens = [open_paren, {inject, _} | _]) ->
+    expr(Tokens);
 pattern([open_paren, {capture, Name} | Tail]) ->
     {[close_paren | R], Expr} = expr(Tail),
     {R, {capture, Expr, Name}};
@@ -40,7 +42,13 @@ expr([open_curvy_brace | Tail]) ->
 expr([open_square_brace | Tail]) ->
     expr_list(Tail);
 expr([open_angle_brace | Tail]) ->
-    expr_iterable(Tail).
+    expr_iterable(Tail);
+expr([open_paren, {inject, Name}, Type, close_paren | Tail])
+  when Type == string;
+       Type == number;
+       Type == boolean;
+       Type == regex ->
+    {Tail, {inject, Type, Name}}.
 
 %% -----
 

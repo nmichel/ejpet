@@ -1,5 +1,4 @@
-Pattern -> '(' Expr ')'
-         | '(' '?<' Name '>' Expr ')'
+Pattern -> | '(' '?<' Name '>' Expr ')'
          | Expr
 Name    -> [a-zA-Z_0-9]+
 Expr -> '{' [Pair (',' Pair)*] '}'
@@ -14,8 +13,13 @@ Expr -> '{' [Pair (',' Pair)*] '}'
          | Number
          | String
          | Regex
+         | '(' '!<' Name '>' Type ')'
 Pair    -> String ':' (Pattern | '_')
          | '_' ':' Pattern
 Number  -> [0-9]+
 Regex   -> '#' String
 String  -> '"' [a-zA-Z_ 0-9]* '"'
+Type    -> string
+         | number
+         | boolean
+         | regex
