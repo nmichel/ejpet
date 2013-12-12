@@ -1,25 +1,53 @@
-Pattern -> | '(' '?<' Name '>' Expr ')'
-         | Expr
-Name    -> [a-zA-Z_0-9]+
-Expr -> '{' [Pair (',' Pair)*] '}'
-         | '[' [['*' ','] Pattern (',' ['*' ','] Pattern)*] ']'
-         | '<' [Pattern (',' Pattern)*] '>'
-         | '**/' Pattern
-         | '*/' Pattern
-         | '_'
+pattern -> spaces "(" spaces "?<" spaces name spaces ">" spaces expr spaces ")" spaces 
+         | spaces expr spaces
+
+name    -> [a-zA-Z_0-9]+
+
+expr    -> "{" spaces "}"
+         | "{" spaces pair spaces (',' spaces pair)* spaces "}"
+         | "[" spaces "]"
+         |"[" spaces (("*" spaces ",")? spaces pattern spaces (',' spaces ('*' spaces ',')? spaces pattern)*)? spaces "]"
+         | "<" spaces ">"
+         | "<" spaces (pattern spaces (',' spaces pattern)*)? spaces ">"
+         | "**/" spaces pattern
+         | "*/" spaces pattern
+         | "_"
          | "true"
          | "false"
          | "null"
-         | Number
-         | String
-         | Regex
-         | '(' '!<' Name '>' Type ')'
-Pair    -> String ':' (Pattern | '_')
-         | '_' ':' Pattern
-Number  -> [0-9]+
-Regex   -> '#' String
-String  -> '"' [a-zA-Z_ 0-9]* '"'
-Type    -> string
          | number
-         | boolean
+         | string
          | regex
+         | "(" spaces "!<" spaces name spaces ">" spaces type spaces ")"
+
+pair    -> string spaces ":" spaces (pattern | '_')
+         | "_" spaces ":" spaces pattern
+
+number  -> integer decimal frac
+         | integer frac
+         | integer
+integer  -> [+-]? digit+
+decimal  -> "." digit+
+frac     -> [+-]? [eE] digit+
+
+regex   -> "#" spaces string
+string  -> "\"" char* "\""
+type    -> "string"
+         | "number"
+         | "boolean"
+         | "regex"
+
+char    -> "\\u" hexa hexa hexa hexa
+         | "\\n"
+         | "\\r"
+         | "\\t"
+         | "\\b"
+         | "\\f"
+         | "\\s"
+         | "\\\\"
+         | "\\\""
+         | !("\"" | "\\") valid_cp
+valid_cp -> .
+
+spaces  -> space*
+space   -> [ \n\r\t]

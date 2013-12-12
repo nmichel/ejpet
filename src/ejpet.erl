@@ -3,7 +3,7 @@
 
 -export([decode/2, encode/2,
          generator/1,
-         compile/1, compile/3,
+         compile/1, compile/2, compile/3,
          backend/1,
          run/2, run/3,
          match/2, match/3, match/4]).
@@ -34,6 +34,9 @@ generator(Backend) when is_atom(Backend) ->
 
 compile(Pattern) ->
     compile(Pattern, ?DEFAULT_BACKEND, ?DEFAULT_OPTIONS).
+
+compile(Pattern, Backend) ->
+    compile(Pattern, Backend, ?DEFAULT_OPTIONS).
 
 compile(Pattern, Backend, Options) ->
     {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, Options)),

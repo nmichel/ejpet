@@ -1,6 +1,2 @@
-* 2013-12-06 - injected paramters should be checked :
-               strings must be transformed into binaries,
-               boolean should be true or false,
-               number should be ... number,
-               regex should be mp().
+* 2013-12-12 - inject arbitrary match-tree.
 * 2013-12-05 - capture key value.

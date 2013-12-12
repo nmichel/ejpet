@@ -100,7 +100,7 @@ Ok. Now define what we are looking for, and what we want to get
 Run and seek ...
 
 ```erlang
-4>  ejpet:run(O, Node).
+4>  ejpet:run(Node, O).
 ```
 
 Here you are !
@@ -132,7 +132,8 @@ Expression syntax
 | `{ kv* }` | object for which all kv (key/value) patterns are matched | Order does not matter |
 | `[ item* (, *)?]` | list for which all item patterns are matched | Order DOES matter |
 | `< value* >` | value set (list, or object values) for which all value patterns are matched | Order does not matter 
-
+| `(?<name>expr)` | capture expression `expr` in return value `name` | Every JSON expression may be captured
+| `(!<name>type)` | match json object of type `type` against parameter named `name`  |
 
 
 `kv` may be one of the form
@@ -148,6 +149,13 @@ Expression syntax
 
 `kv`, `item` and `value` are separated by `,`.
 
+
+In parameter injection `type`may be
+* `number`
+* `boolean`
+* `string`
+* `regex`
+
 ## Notes
 
 ### Numbers
@@ -155,9 +163,9 @@ Expression syntax
 `number` matching may be strict or loose, depending on an option passed are compile-time.
 
 ```erlang
-1> ejpet:match("42", <<"42.0">>).
+1> ejpet:match(<<"42.0">>, "42").
 {true, []}
-2> ejpet:match("42", <<"42.0">>, [{number_strict_match, true}]).
+2> ejpet:match(<<"42.0">>, "42", [{number_strict_match, true}]).
 {false, []}
 ```
 
@@ -168,11 +176,11 @@ Expression syntax
 They may contain escaping sequences, as in `"\\b"`, or `"\u00E9"`. When found in a `string` these sequences are interpreted by default (but they may be left as-is with option `string_apply_escape_sequence` set to `false`). Found in `regex` they are not interpreted.
 
 ```erlang
-3> ejpet:match(<<"\"\\u00E9\""/utf8>>, <<"\"\x{00E9}\""/utf8>>, [{string_apply_escape_sequence, true}]).
+3> ejpet:match(<<"\"\x{00E9}\""/utf8>>, <<"\"\\u00E9\""/utf8>>, [{string_apply_escape_sequence, true}]).
 {true,[]}
-4> ejpet:match(<<"\"\\u00E9\""/utf8>>, <<"\"\x{00E9}\""/utf8>>, [{string_apply_escape_sequence, false}]).
+4> ejpet:match(<<"\"\x{00E9}\""/utf8>>, <<"\"\\u00E9\""/utf8>>, [{string_apply_escape_sequence, false}]).
 {false, []}
-5> ejpet:match(<<"\"\\u00E9\""/utf8>>, <<"\"\\\\u00E9\""/utf8>>, [{string_apply_escape_sequence, false}]).
+5> ejpet:match(<<"\"\\\\u00E9\""/utf8>>, <<"\"\\u00E9\""/utf8>>, [{string_apply_escape_sequence, false}]).
 {true, []}
 ```
 
@@ -183,16 +191,30 @@ Captures
 
 Every pattern `p` can be captured by simply substituing it by `(?<variable_name>p)`.
 
+Parameters Injection
+----
+
+It is possible to provide some matching values at match-time, through parameter injection forms like "(!<param_name>param_type)", where param_type may be `number`, `string`, `boolean` and `regex`.
+At match-time, produced matching functions will look for an entry named "param_name" in the provided parameters list. See `ejpet:run/3` and `ejpet:match/4`.
+
+
+Note that `string` values should be binaries, and `regex` values MUST be `mp()` opaque objects returned by `re:compile/2`.
+
+
 # API
 
 ```erlang
 epm() = {ejpet, term(), term()}
 expr_src() = string()
 compile_option() = {number_strict_match, (true|false)}
+  | {string_apply_escape_sequence, (true | false)}
 
 json_src() = binary()
 json_term() = jsx_term() | jiffy_term() | mochijson2_term()
 
+match_param = {match_param_name(), match_param_value()}
+match_param_name = binary()
+match_param_value = true | false | number | binary() | re::mp()
 match_res() = {match_stat(), [capture()]
 match_stat() = true | false
 capture() = {capture_name(), capture_value()}
@@ -206,29 +228,40 @@ ejpet:compile(Expr, Backend, Options) -> epm()
   Options = [Option]
   Option = compile_option()
 
+ejpet:compile(Expr, Backend) -> epm()
+
+  Same as ejpet:compile(Expr, Backend, [])
+  
 ejpet:compile(Expr) -> epm()
 
   Same as ejpet:compile(Expr, jsx, [])
   
-ejpet:run(EPM, JSONTerm) -> match_res()
+ejpet:run(JSONTerm, EPM, Params) -> match_res()
 
   EPM = epm()
   JSONTerm = json_term()
- 
-ejpet:match(Expr, JSONText, Backend, Options) -> match_res()
+  Params = [Param]
+  Param = match_param()
 
-  Expr = expr_src()
-  Backend = jsx | jiffy | mochijson2
+ejpet:run(JSONTerm, EPM) -> match_res()
+
+  Same pas ejpet:run(JSONTerm, EPM, [])
+
+ejpet:match(JSONText, Expr, Options, Params) -> match_res()
+
+  Expr = expr_src() | epm()
   Options = [Option]
   Option = compile_option()
+  Params = [Param]
+  Param = match_param()
 
-ejpet:match(Expr, JSONText, Options) -> match_res()
+ejpet:match(JSONText, Expr, Options) -> match_res()
 
-  Same as ejpet:match(Expr, JSONText, jsx, Options)
+  Same as ejpet:match(JSONText, Expr, Options, [])
   
-ejpet:match(Expr, JSONText) -> match_res()
+ejpet:match(JSONText, Expr) -> match_res()
 
-  Same as ejpet:match(Expr, JSONText, jsx, [])
+  Same as ejpet:match(JSONText, Expr, [], [])
 ```
 
 # Examples
@@ -238,61 +271,62 @@ ejpet:match(Expr, JSONText) -> match_res()
 
 | Expression | Match | No match | Code snippet |
  ------------------|------------------------------------------|-------------------------------------|-----
-| `42` | `42` | `"42"`, `[42]`, `{"key": 42}` | `ejpet:match("42", <<"42">>).` |
-| `"42"` | `"42"` | `42`, `["42"]`, `{"key": "42"}` | `ejpet:match("\"42\"", <<"\"42\"">>).` |
-| `true` | `true` | `"true"`, `[true]` | `ejpet:match("true", <<"true">>).` |
-| `false` | `false` | `"false"`, `[false]` | `ejpet:match("false", <<"false">>).` |
-| `null` | `null` | `"null"`, `[null]` | `ejpet:match("null", <<"null">>).` |
-| `#"foo"` | `"foobar"`,  `"barfoo"` |  `"barfo"` | `ejpet:match("#\"foo\"", <<"\"foobar\"">>).` |
-| `#"^foo"` | `"foobar"` | `"barfoo"` | `ejpet:match("#\"^foo\"", <<"\"foobar\"">>).` |
-| `#"bar$"` | `"foobar"` | `"barfoo"` | `ejpet:match("#\"bar$\"", <<"\"foobar\"">>).` |
+| `42` | `42` | `"42"`, `[42]`, `{"key": 42}` | `ejpet:match(<<"42">>, "42").` |
+| `"42"` | `"42"` | `42`, `["42"]`, `{"key": "42"}` | `ejpet:match(<<"\"42\"">>, "\"42\"").` |
+| `true` | `true` | `"true"`, `[true]` | `ejpet:match(<<"true">>, "true").` |
+| `false` | `false` | `"false"`, `[false]` | `ejpet:match(<<"false">>, "false").` |
+| `null` | `null` | `"null"`, `[null]` | `ejpet:match(<<"null">>, "null").` |
+| `#"foo"` | `"foobar"`,  `"barfoo"` |  `"barfo"` | `ejpet:match(<<"\"foobar\"">>, "#\"foo\"").` |
+| `#"^foo"` | `"foobar"` | `"barfoo"` | `ejpet:match(<<"\"foobar\"">>, "#\"^foo\"").` |
+| `#"bar$"` | `"foobar"` | `"barfoo"` | `ejpet:match(<<"\"foobar\"">>, "#\"bar$\"").` |
 
 ## Objects
 
 
 | Expression | Match | No match | Code snippet |
  ------------------|------------------------------------------|-------------------------------------|-----
-| `{_:42}` | `{"bar": 42}`, `{"bar": 47, "foo": 42}` | `{"bar": 47}`, `{"foo": "42"}` | `ejpet:match("{_:42}", <<"{\"foo\": 42}">>).` |
-| `{"foo":_}` | `{"foo": 42}`, `{"bar": 42, "foo": {}}` | `{"bar": "foo"}` | `ejpet:match("{\"foo\":_}", <<"{\"foo\": 42}">>).` |
-| `{"foo":42}` | `{"foo": 42}`, `{"bar": "42", "foo": 42}` | `{"bar": 42, "foo": "42"}` | `ejpet:match("{\"foo\":42}", <<"{\"foo\": 42}">>).`|
-| `{_:{"foo": 42}, "bar": {_:#"bar"}}` | `{"neh": {"foo": 42}, "bar": {"nimp": "foobar"}}` | `{"neh": {"notfoo": 42}, "bar": {"nimp": "foobar"}}` | `ejpet:match("{_:{\"foo\": 42}, \"bar\": {_:#\"bar\"}}", <<"{\"neh\": {\"foo\": 42}, \"bar\": {\"nimp\": \"foobar\"}}">>).`|
+| `{_:42}` | `{"bar": 42}`, `{"bar": 47, "foo": 42}` | `{"bar": 47}`, `{"foo": "42"}` | `ejpet:match(<<"{\"foo\": 42}">>, "{_:42}").` |
+| `{"foo":_}` | `{"foo": 42}`, `{"bar": 42, "foo": {}}` | `{"bar": "foo"}` | `ejpet:match(<<"{\"foo\": 42}">>, "{\"foo\":_}").` |
+| `{"foo":42}` | `{"foo": 42}`, `{"bar": "42", "foo": 42}` | `{"bar": 42, "foo": "42"}` | `ejpet:match(<<"{\"foo\": 42}">>, "{\"foo\":42}").`|
+| `{_:{"foo": 42}, "bar": {_:#"bar"}}` | `{"neh": {"foo": 42}, "bar": {"nimp": "foobar"}}` | `{"neh": {"notfoo": 42}, "bar": {"nimp": "foobar"}}` | `ejpet:match(<<"{\"neh\": {\"foo\": 42}, \"bar\": {\"nimp\": \"foobar\"}}">>, "{_:{\"foo\": 42}, \"bar\": {_:#\"bar\"}}").`|
 
 ## Lists
 
 | Expression | Match | No match | Code snippet |
  ------------------|------------------------------------------|-------------------------------------|-----
-| `["42"]` | `["42"]` | `{"bar": "42"}`, `{"foo": 42}`, `[42]`, `["42", "42"]` | `ejpet:match("[\"42\"]", <<"[\"42\"]">>).` |
-| `[*, "42"]` | `["42"]`, `["42", "42"]`, `[true, "42"]` | `{"bar": "42"}`, `{"foo": 42}`, `[42]`, `["42", true]` | `ejpet:match("[*, \"42\"]", <<"[true, \"42\"]">>).` |
-| `[*, "42", *]` | `["42"]`, `["42", "42"]`, `[true, "42"]`, `["42", true]`, `[{}, "42", true]` | `{"bar": "42"}`, `{"foo": 42}`, `[42]` | `ejpet:match("[*, \"42\", *]", <<"[true, \"42\", {}]">>).` |
-| `[[42]]` | `[[42]]` | `[42]`, `[[42], 42]` | `ejpet:match("[[42]]", <<"[[42]]">>).` |
-| `[*, [42]]` | `[[42]]`, `["42", [42]]` | `[[42], 42]` | `ejpet:match("[*, [42]]", <<"[\"42\", [42]]">>).` |
-| `[[42], *]` | `[[42]]`, `[[42], 42]` | `["42", [42]]` | `ejpet:match("[[42], *]", <<"[[42], \"42\"]">>).` |
+| `["42"]` | `["42"]` | `{"bar": "42"}`, `{"foo": 42}`, `[42]`, `["42", "42"]` | `ejpet:match(<<"[\"42\"]">>, "[\"42\"]").` |
+| `[*, "42"]` | `["42"]`, `["42", "42"]`, `[true, "42"]` | `{"bar": "42"}`, `{"foo": 42}`, `[42]`, `["42", true]` | `ejpet:match(<<"[true, \"42\"]">>, "[*, \"42\"]").` |
+| `[*, "42", *]` | `["42"]`, `["42", "42"]`, `[true, "42"]`, `["42", true]`, `[{}, "42", true]` | `{"bar": "42"}`, `{"foo": 42}`, `[42]` | `ejpet:match(<<"[true, \"42\", {}]">>, "[*, \"42\", *]").` |
+| `[[42]]` | `[[42]]` | `[42]`, `[[42], 42]` | `ejpet:match(<<"[[42]]">>, "[[42]]").` |
+| `[*, [42]]` | `[[42]]`, `["42", [42]]` | `[[42], 42]` | `ejpet:match(<<"[\"42\", [42]]">>, "[*, [42]]").` |
+| `[[42], *]` | `[[42]]`, `[[42], 42]` | `["42", [42]]` | `ejpet:match(<<"[[42], \"42\"]">>, "[[42], *]").` |
 
 ## Value sets (lists or object value set)
 
 | Expression | Match | No match | Code snippet |
  ------------------|------------------------------------------|-------------------------------------|-----
-| `<42>` | `[42]`, `{"key": 42}` | `42`, `"42"` | `ejpet:match("<42>", <<"{\"key\": 42}">>).` |
-| `<"42">` | `["42"]`, `{"bar": "42"}`, `[42, "42"]`, `["42", 42]` | `[42]`, `{"bar": 47}`, `{"foo": 42}` | `ejpet:match("<\"42\">", <<"{\"bar\": \"42\"}">>).` |
-| `**/"42"` | `["42"]`, `[true, "42"]`, `["foo", ["42", true], {}]`, `[{}, {"foo": "42"}, true]`, `{"bar": "42"}`, `{"bar": {"foo": "42"}}` | `"42"`, `{"foo": 42}`, `[42]` | `ejpet:match("**/\"42\"", <<"[true, [null, {\"foo\": \"42\"}, \"bar\"], {}]">>).` |
-| `**/**/"42"` | `[["42"]]`, `[{}, {"foo": "42"}, true]`, `{"bar": {"foo": "42"}}` | `["42"]`, `{"bar": "42"}` | `ejpet:match("**/**/\"42\"", <<"[{\"foo\":\"42\"}]">>).` |
+| `<42>` | `[42]`, `{"key": 42}` | `42`, `"42"` | `ejpet:match(<<"{\"key\": 42}">>, "<42>").` |
+| `<"42">` | `["42"]`, `{"bar": "42"}`, `[42, "42"]`, `["42", 42]` | `[42]`, `{"bar": 47}`, `{"foo": 42}` | `ejpet:match(<<"{\"bar\": \"42\"}">>, "<\"42\">").` |
+| `**/"42"` | `["42"]`, `[true, "42"]`, `["foo", ["42", true], {}]`, `[{}, {"foo": "42"}, true]`, `{"bar": "42"}`, `{"bar": {"foo": "42"}}` | `"42"`, `{"foo": 42}`, `[42]` | `ejpet:match(<<"[true, [null, {\"foo\": \"42\"}, \"bar\"], {}]">>, "**/\"42\"").` |
+| `**/**/"42"` | `[["42"]]`, `[{}, {"foo": "42"}, true]`, `{"bar": {"foo": "42"}}` | `["42"]`, `{"bar": "42"}` | `ejpet:match(<<"[{\"foo\":\"42\"}]">>, "**/**/\"42\"").` |
 
 ## Captures
 
 | Expression | Test | Capture(s) | Code snippet |
 ---|---|---|----
-| `**/(?<subnode>{_:42})` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | subnode: `{"foo":42,"bar":{}}` | `ejpet:match("**/(?<subnode>{_:42})", <<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>).`
-| `(?<all>**/(?<subnode>{_:42}))` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | all: `[{"foo":null},{"foo":42,"bar":{}}]}`,subnode: `{"foo":42,"bar":{}}` | `ejpet:match("(?<all>**/(?<subnode>{_:42}))", <<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>).`
+| `**/(?<subnode>{_:42})` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | subnode: `{"foo":42,"bar":{}}` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "**/(?<subnode>{_:42})").`
+| `(?<all>**/(?<subnode>{_:42}))` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | all: `[{"foo":null},{"foo":42,"bar":{}}]}`,subnode: `{"foo":42,"bar":{}}` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all>**/(?<subnode>{_:42}))").`
+
 
 ### Notes
 
-In the arry above, captured values are expressed "abstract JSON node", for illustration purpose.
+In the array above, captured values are expressed as "abstract JSON node", for illustration purpose.
 The real captured values depends on the API function used, and may be:
 
 * serialized JSON nodes (as in the "Code snippet" column),
 
 ```erlang
-1> ejpet:match("(?<all>**/(?<subnode>{_:42}))", <<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>).
+1> ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all>**/(?<subnode>{_:42}))").
 {true,[{"all",
         <<"[{\"foo\":null},{\"foo\":42,\"bar\":{}}]">>},
        {"subnode",<<"{\"foo\":42,\"bar\":{}}">>}]}
@@ -303,7 +337,7 @@ The real captured values depends on the API function used, and may be:
 ```erlang
 1> JSX = ejpet:compile("(?<all>**/(?<subnode>{_:42}))", jsx, []).
 {ejpet,jsx,#Fun<ejpet_jsx_generators.19.98422695>}
-2> ejpet:run(JSX, (ejpet:backend(JSX)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>)).
+2> ejpet:run((ejpet:backend(JSX)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>), JSX).
 {true,[{"all",
         [[{<<"foo">>,null}],[{<<"foo">>,42},{<<"bar">>,[{}]}]]},
        {"subnode",[{<<"foo">>,42},{<<"bar">>,[{}]}]}]}
@@ -311,7 +345,7 @@ The real captured values depends on the API function used, and may be:
 39> Mochi = ejpet:compile("(?<all>**/(?<subnode>{_:42}))", mochijson2, []).
 {ejpet,mochijson2,
        #Fun<ejpet_mochijson2_generators.19.110863078>}
-40> ejpet:run(Mochi, (ejpet:backend(Mochi)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>)).
+40> ejpet:run(ejpet:backend(Mochi)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>), Mochi).
 {true,[{"all",
         [{struct,[{<<"foo">>,null}]},
          {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]},
@@ -319,3 +353,8 @@ The real captured values depends on the API function used, and may be:
         {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}}]}
 ```
 
+## Injections
+
+| Expression | Test | parameters | Capture(s) | Code snippet |
+---|---|---|---|---
+| `*/(?<subnode>(!<what>number))` | `[41, 42, 43]` | `[{<<"what">>, 42}]` | subnode: `42` | `ejpet:match(<<"[41, 42, 43]">>, "*/(?<subnode>(!<what>number))", [], [{<<"what">>, 42}]).`
