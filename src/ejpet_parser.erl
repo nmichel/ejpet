@@ -110,7 +110,7 @@ expr_list_head(List) ->
 expr_list_tail([close_square_brace | Tail], Acc) -> % ']'
     {Tail, {list, lists:reverse([eol | Acc])}}; % strict : previous expression must match the end of list
 expr_list_tail([coma, star, close_square_brace | Tail], Acc) -> % ',' '*' ']'  Tail
-    {Tail, {list, lists:reverse( Acc)}}; % loose : previous match may be followed by zero of more items
+    {Tail, {list, lists:reverse(Acc)}}; % loose : previous match may be followed by zero of more items
 expr_list_tail([coma, star, coma | Tail], Acc) -> % ',' '*' ',' Expr Tail
     {R, Expr} = pattern(Tail),
     expr_list_tail(R, [{find, Expr} | Acc]);

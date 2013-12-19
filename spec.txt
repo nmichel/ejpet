@@ -6,7 +6,8 @@ name    -> [a-zA-Z_0-9]+
 expr    -> "{" spaces "}"
          | "{" spaces pair spaces (',' spaces pair)* spaces "}"
          | "[" spaces "]"
-         |"[" spaces (("*" spaces ",")? spaces pattern spaces (',' spaces ('*' spaces ',')? spaces pattern)*)? spaces "]"
+         | "[" spaces "*" spaces "]"
+         | "[" spaces item tail
          | "<" spaces ">"
          | "<" spaces (pattern spaces (',' spaces pattern)*)? spaces ">"
          | "**/" spaces pattern
@@ -20,10 +21,19 @@ expr    -> "{" spaces "}"
          | regex
          | "(" spaces "!<" spaces name spaces ">" spaces type spaces ")"
 
-pair    -> string spaces ":" spaces (pattern | '_')
+pair    -> string spaces ":" spaces pattern
+         | string spaces ":" spaces "_"
          | "_" spaces ":" spaces pattern
 
+item    -> "*" spaces "," spaces pattern
+         | spaces pattern
+
+tail    -> spaces "]"
+         | spaces "," spaces "*" spaces "]"
+         | spaces "," spaces item tail
+
 number  -> integer decimal frac
+         | integer decimal
          | integer frac
          | integer
 integer  -> [+-]? digit+
