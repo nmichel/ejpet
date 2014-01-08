@@ -195,13 +195,13 @@ generate_matcher({list, Conditions}, Options) ->
                                     {S, R} = Matcher(ItemList, Params),
                                     {[S | Acc], R}
                             end, {[], Items}, ItemMatchers),
-            {FinalStatus, AccCaptures} = 
+            Res = {FinalStatus, _AccCaptures} = 
                 lists:foldl(fun({S, Captures}, {Stat, Acc}) ->
                                     {S and Stat, Captures ++ Acc}
                             end, {true, []}, lists:reverse(Statuses)),
             case FinalStatus of
                 true ->
-                    {FinalStatus, AccCaptures};
+                    Res;
                 _ ->
                     {false, []}
             end;

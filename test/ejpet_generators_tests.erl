@@ -335,7 +335,7 @@ generate_test_list(TestDescs, Backend) ->
                                       end,
                           lists:foldl(fun({Node, Expected}, Acc) ->
                                               [BuildTest(Node, [], Expected) | Acc];
-                                         ({Node, Injected, Expected = {ExpStatus, _ExpCaptures}}, Acc) ->
+                                         ({Node, Injected, Expected}, Acc) ->
                                               [BuildTest(Node, Injected, Expected) | Acc]
                                       end, FnAcc, T)
                   end, [], TestDescs)).

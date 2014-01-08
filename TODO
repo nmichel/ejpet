@@ -1,2 +1,5 @@
-* 2013-12-12 - inject arbitrary match-tree.
+* 2013-12-16 - [abstract] memoization
+* 2013-12-13 - global capture.
+* 2013-12-13 - inject key value.
+* 2013-12-12 - inject arbitrary match-tree (where it is legal to do it).
 * 2013-12-05 - capture key value.
