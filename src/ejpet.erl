@@ -22,9 +22,7 @@
 decode(JSON, Backend) when is_list(JSON) ->
     decode(list_to_binary(JSON), Backend);
 decode(JSON, Backend) when is_binary(JSON) ->
-    Backend:decode(JSON);
-decode(JSON, Backend) ->
-    decode(list_to_binary(JSON), Backend).
+    Backend:decode(JSON).
 
 encode(Node, Backend) ->
     case Backend:encode(Node) of
