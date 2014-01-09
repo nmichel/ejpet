@@ -16,8 +16,11 @@
 %% -----
 %% Generator options
 %% {number_strict_match, (true|false)}
+%% {string_apply_escape_sequence, (true|false)}
 %% -----
 
+decode(JSON, Backend) when is_list(JSON) ->
+    decode(list_to_binary(JSON), Backend);
 decode(JSON, Backend) when is_binary(JSON) ->
     Backend:decode(JSON).
 
