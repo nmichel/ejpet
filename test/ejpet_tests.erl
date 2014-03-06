@@ -16,13 +16,13 @@ run_test_() ->
               {false, []}},
              {"(?<full>**/42)",
               <<"[42]"/utf8>>,
-              {true, [{"full", <<"[42]">>}]}},
+              {true, [{"full", [<<"[42]">>]}]}},
              {"**/(?<toto>42)",
               <<"[[[[[[[[[[[[[[[[[[[[[[[[{\"foo\": 42}]]]]]]]]]]]]]]]]]]]]]]]]"/utf8>>,
-              {true, [{"toto", <<"42">>}]}},
+              {true, [{"toto", [<<"42">>]}]}},
               {"**/(?<toto><42>)",
                <<"[[[[[[[[[[[[[[[[[[[[[[[[{\"foo\": 42}]]]]]]]]]]]]]]]]]]]]]]]]"/utf8>>,
-               {true,[{"toto", <<"{\"foo\":42}">>}]}},
+               {true,[{"toto", [<<"{\"foo\":42}">>]}]}},
               {"**/(?<toto>[42])",
                <<"[[[[[[[[[[[[[[[[[[[[[[[[1, 42]]]]]]]]]]]]]]]]]]]]]]]]"/utf8>>,
                {false, []}},
@@ -249,7 +249,7 @@ run_test_() ->
         ]
     }
 ]"/utf8>>,
-              {true, [{"ip", <<"\"239.100.10.4\"">>}]}}
+              {true, [{"ip", [<<"\"239.100.10.4\"">>]}]}}
              ],
 
     lists:foldl(fun({Pattern, JSON, Expected}, Acc) ->
@@ -260,11 +260,11 @@ run_test_() ->
 
                         %% Transform captures to text
                         %% 
-                        JSONCaptures = [{VarName, (ejpet:backend(O)):encode(Cap)} || {VarName, Cap} <- Captures],
+                        JSONCaptures = [{VarName, [(ejpet:backend(O)):encode(Cap) || Cap <- Caps]} || {VarName, Caps} <- Captures],
 
                         %% Parse again and stringify captures using the reference backend
                         %% 
-                        RefCaptures = [{VarName, ?REF_BACKEND:encode(?REF_BACKEND:decode(Cap))} || {VarName, Cap} <- JSONCaptures],
+                        RefCaptures = [{VarName, [?REF_BACKEND:encode(?REF_BACKEND:decode(Cap)) || Cap <- Caps]} || {VarName, Caps} <- JSONCaptures],
 
                         %% Produce test function
                         %% 

@@ -52,6 +52,8 @@ tokenize(<<$(, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [open_paren | Acc], Config);
 tokenize(<<$), T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [close_paren | Acc], Config);
+tokenize(<<$/, $g, T/binary>>, State = [state_root | _], Acc, Config) ->
+    tokenize(T, State, [slash_g | Acc], Config);
 
 tokenize(<<$\n, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, Acc, Config);

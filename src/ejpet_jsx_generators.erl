@@ -10,7 +10,7 @@ generate_matcher({capture, Pattern, Mode}, Options) ->
     fun(JSON, Params) ->
             case Matcher(JSON, Params) of
                 {true, Captures} ->
-                    {true, [{Mode, JSON} | Captures]};
+                    {true, [{Mode, [JSON]} | Captures]};
                 R ->
                     R
             end
@@ -222,12 +222,12 @@ generate_matcher({iterable, any}, _Options) ->
             {false, []}
     end;
 
-generate_matcher({iterable, Conditions}, Options) ->
+generate_matcher({iterable, Conditions, Flags}, Options) ->
     Matchers = lists:map(fun(C) ->
                                  generate_matcher(C, Options)
                          end, Conditions),
     fun(Items, Params) when is_list(Items) ->
-            R = [continue_until_value_match(Items, Matcher, Params) || Matcher <- Matchers],
+            R = [continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
             {AccCaptures, AccFailedCount} = 
                 lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
                                     {Captures ++ CapAcc, FailedAcc};
@@ -356,24 +356,58 @@ continue_until_match([Item | Tail], Matcher, Params) ->
             continue_until_match(Tail, Matcher, Params)
     end.
 
-continue_until_value_match([{}], _Matcher, _Params) ->
+melt_([], []) ->
+    [];
+melt_([], L) ->
+    L;
+melt_(L, []) ->
+    L;
+melt_(L1, L2) ->
+    melt_(L1, L2, []).
+
+melt_([], List, Acc) ->
+    List ++ Acc;
+melt_(List, [], Acc) ->
+    List ++ Acc;
+melt_([{Key, Values} | Tail], List, Acc) ->
+    OtherValues = proplists:get_value(Key, List, []),
+    OtherListTail = proplists:delete(Key, List),
+    melt_(Tail, OtherListTail, [{Key, Values ++ OtherValues} | Acc]).
+
+continue_until_value_match([{}], _Matcher, _Params, _Flags) ->
     {{false, []}, []};
-continue_until_value_match([], _Matcher, _Params) ->
+continue_until_value_match([], _Matcher, _Params, _Flags) ->
     {{false, []}, []};
-continue_until_value_match([{_Key, Val} | Tail], Matcher, Params) ->
+continue_until_value_match(Iterable, Matcher, Params, true) ->
+    {continue_until_end_(Iterable, Matcher, Params), []};
+continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, false) ->
     case Matcher(Val, Params) of 
         R = {true, _} ->
             {R, Tail};
         _ ->
-            continue_until_value_match(Tail, Matcher, Params)
+            continue_until_value_match(Tail, Matcher, Params, false)
     end;
-continue_until_value_match([Item | Tail], Matcher, Params) ->
+continue_until_value_match([Item | Tail], Matcher, Params, false) ->
     case Matcher(Item, Params) of 
         R = {true, _} ->
             {R, Tail};
         _ ->
-            continue_until_value_match(Tail, Matcher, Params)
+            continue_until_value_match(Tail, Matcher, Params, false)
     end.
+
+continue_until_end_(Iterable, Matcher, Params) ->
+    continue_until_end_(Iterable, Matcher, Params, {false, []}).
+
+continue_until_end_([{}], _Matcher, _Params, Acc) ->
+    Acc;
+continue_until_end_([], _Matcher, _Params, Acc) ->
+    Acc;
+continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Val, Params),
+    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, melt_(AccCaptures, LocalCaptures)});
+continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Item, Params),
+    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, melt_(AccCaptures, LocalCaptures)}).
 
 deep_continue_until_value_match([{}], _Matcher, _Params) ->
     {{false, []}, []};

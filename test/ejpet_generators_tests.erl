@@ -4,7 +4,8 @@
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
--define(BACKENDS, [jsx, jiffy, mochijson2]).
+%-define(BACKENDS, [jsx, jiffy, mochijson2]).
+-define(BACKENDS, [jsx]).
 -define(REF_BACKEND, jsx).
 
 
@@ -191,13 +192,13 @@ complex_test_() ->
 capture_test_() ->
     Tests = [
              {"(?<value>{_:[*]})",
-              [{<<"{\"foo\": [42]}">>, {true, [{"value", <<"{\"foo\":[42]}">>}]}}
+              [{<<"{\"foo\": [42]}">>, {true, [{"value", [<<"{\"foo\":[42]}">>]}]}}
               ]},
              {"(?<value>{_:([*])})",
-              [{<<"{\"foo\": [42]}">>, {true, [{"value", <<"{\"foo\":[42]}">>}, {positional, <<"[42]">>}]}}
+              [{<<"{\"foo\": [42]}">>, {true, [{"value", [<<"{\"foo\":[42]}">>]}, {positional, [<<"[42]">>]}]}}
               ]},
              {"(?<full>{_:(?<local>[*])})",
-              [{<<"{\"foo\": [42]}">>, {true, [{"full", <<"{\"foo\":[42]}">>}, {"local", <<"[42]">>}]}}
+              [{<<"{\"foo\": [42]}">>, {true, [{"full", [<<"{\"foo\":[42]}">>]}, {"local", [<<"[42]">>]}]}}
               ]},
              {"
               <
@@ -206,7 +207,7 @@ capture_test_() ->
                   }
               >
               ",
-              [{<<"[1, 2, {\"foo\": 42, \"bar\": [{\"neh\": 42}]}, 41, 42]">>, {true, [{"found", <<"{\"neh\":42}">>}]}}
+              [{<<"[1, 2, {\"foo\": 42, \"bar\": [{\"neh\": 42}]}, 41, 42]">>, {true, [{"found", [<<"{\"neh\":42}">>]}]}}
               ]}
             ],
     generate_test_list(Tests).
@@ -214,16 +215,16 @@ capture_test_() ->
 utf8_test_() ->
     Tests = [
              {"{_:[(?<value>_)]}",
-              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", <<"\"漂亮的綠色汽車\""/utf8>>}]}},
-               {<<"{\"bar\": [\"éléphant\"]}"/utf8>>, {true, [{"value", <<"\"éléphant\""/utf8>>}]}}
+              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", [<<"\"漂亮的綠色汽車\""/utf8>>]}]}},
+               {<<"{\"bar\": [\"éléphant\"]}"/utf8>>, {true, [{"value", [<<"\"éléphant\""/utf8>>]}]}}
               ]},
              {<<"{_:[(?<value>#\"漂.*色\")]}"/utf8>>,
-              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", <<"\"漂亮的綠色汽車\""/utf8>>}]}},
-               {<<"{\"foo\": [\"!漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", <<"\"!漂亮的綠色汽車\""/utf8>>}]}},
+              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", [<<"\"漂亮的綠色汽車\""/utf8>>]}]}},
+               {<<"{\"foo\": [\"!漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", [<<"\"!漂亮的綠色汽車\""/utf8>>]}]}},
                {<<"{\"foo\": [\"!漂亮的綠?汽車\"]}"/utf8>>, {false, []}}
               ]},
              {<<"{_:[(?<value>#\"^漂\")]}"/utf8>>,
-              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", <<"\"漂亮的綠色汽車\""/utf8>>}]}},
+              [{<<"{\"foo\": [\"漂亮的綠色汽車\"]}"/utf8>>, {true, [{"value", [<<"\"漂亮的綠色汽車\""/utf8>>]}]}},
                {<<"{\"foo\": [\"!漂亮的綠色汽車\"]}"/utf8>>, {false, []}}
               ]}
             ],
@@ -285,14 +286,24 @@ injection_and_capture_test_() ->
     {ok, MP2} = re:compile("^grp_\\d+$"),
     Tests = [
              {"*/{\"sender\":(!<who>number),\"text\":(?<text>_)}",
-              [{<<"[{\"sender\":42,\"text\":\"foo\"}, {\"sender\":24,\"text\":\"bar\"}]">>, [{<<"who">>, 42}], {true, [{"text", <<"\"foo\"">>}]}},
-               {<<"[{\"sender\":42,\"text\":\"foo\"}, {\"sender\":24,\"text\":\"bar\"}]">>, [{<<"who">>, 24}], {true, [{"text", <<"\"bar\"">>}]}}
+              [{<<"[{\"sender\":42,\"text\":\"foo\"}, {\"sender\":24,\"text\":\"bar\"}]">>, [{<<"who">>, 42}], {true, [{"text", [<<"\"foo\"">>]}]}},
+               {<<"[{\"sender\":42,\"text\":\"foo\"}, {\"sender\":24,\"text\":\"bar\"}]">>, [{<<"who">>, 24}], {true, [{"text", [<<"\"bar\"">>]}]}}
               ]},
              {"*/{\"sender\":(?<who>{\"name\":(!<from>regex)}),\"text\":(?<text>_)}",
-              [{<<"[{\"sender\":{\"name\": \"id_42\"},\"text\":\"foo\"}, {\"sender\":{\"name\": \"grp_42\"},\"text\":\"bar\"}]">>, [{<<"from">>, MP1}], {true, [{"text", <<"\"foo\"">>},
-                                                                                                                                                                {"who",<<"{\"name\":\"id_42\"}">>}]}},
-               {<<"[{\"sender\":{\"name\": \"id_42\"},\"text\":\"foo\"}, {\"sender\":{\"name\": \"grp_42\"},\"text\":\"bar\"}]">>, [{<<"from">>, MP2}], {true, [{"text", <<"\"bar\"">>},
-                                                                                                                                                                {"who",<<"{\"name\":\"grp_42\"}">>}]}}
+              [{<<"[{\"sender\":{\"name\": \"id_42\"},\"text\":\"foo\"}, {\"sender\":{\"name\": \"grp_42\"},\"text\":\"bar\"}]">>, [{<<"from">>, MP1}], {true, [{"text", [<<"\"foo\"">>]},
+                                                                                                                                                                {"who", [<<"{\"name\":\"id_42\"}">>]}]}},
+               {<<"[{\"sender\":{\"name\": \"id_42\"},\"text\":\"foo\"}, {\"sender\":{\"name\": \"grp_42\"},\"text\":\"bar\"}]">>, [{<<"from">>, MP2}], {true, [{"text", [<<"\"bar\"">>]},
+                                                                                                                                                                {"who", [<<"{\"name\":\"grp_42\"}">>]}]}}
+              ]}
+            ],
+    generate_test_list(Tests).
+
+global_iterable_capture_test_() ->
+    Tests = [
+             {"*/(?<node>{\"codec\":_, \"lang\":(?<lang>_)})/g",
+              [{<<"[{\"codec\": \"audio\", \"lang\": \"fr\"}, {\"codec\": \"video\", \"lang\": \"en\"}, {\"codec\": \"foo\", \"lang\": \"it\"}]">>,
+                {true, [{"node", [<<"{\"codec\":\"audio\",\"lang\":\"fr\"}">>, <<"{\"codec\":\"video\",\"lang\":\"en\"}">>, <<"{\"codec\":\"foo\",\"lang\":\"it\"}">>]},
+                        {"lang",[<<"\"fr\"">>, <<"\"en\"">>, <<"\"it\"">>]}]}}
               ]}
             ],
     generate_test_list(Tests).
@@ -324,13 +335,12 @@ generate_test_list(TestDescs, Backend) ->
 
                                               %% Transform captures to text
                                               %% 
-                                              JSONCaptures = [{VarName, ejpet:encode(Cap, Backend)} || {VarName, Cap} <- Captures],
+                                              JSONCaptures = [{VarName, [ejpet:encode(Cap, Backend) || Cap <- Caps]} || {VarName, Caps} <- Captures],
 
                                               %% Parse again and stringify captures using the reference backend
                                               %% 
-                                              RefCaptures = [{VarName, ejpet:encode(ejpet:decode(Cap, ?REF_BACKEND), ?REF_BACKEND)} || {VarName, Cap} <- JSONCaptures],
-                                              
-                                              
+                                              RefCaptures = [{VarName, [ejpet:encode(ejpet:decode(Cap, ?REF_BACKEND), ?REF_BACKEND) || Cap <- Caps]} || {VarName, Caps} <- JSONCaptures],
+
                                               {TestName, ?_test(?assert({Status, RefCaptures} == Expected))}
                                       end,
                           lists:foldl(fun({Node, Expected}, Acc) ->
