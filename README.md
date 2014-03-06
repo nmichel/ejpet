@@ -194,8 +194,8 @@ Every pattern `p` can be captured by simply substituing it by `(?<variable_name>
 Parameters Injection
 ----
 
-It is possible to provide some matching values at match-time, through parameter injection forms like "(!<param_name>param_type)", where param_type may be `number`, `string`, `boolean` and `regex`.
-At match-time, produced matching functions will look for an entry named "param_name" in the provided parameters list. See `ejpet:run/3` and `ejpet:match/4`.
+It is possible to provide some matching values at match-time, through parameter injection forms like `(!<param_name>param_type)`, where `param_type` may be `number`, `string`, `boolean` and `regex`.
+At match-time, produced matching functions will look for an entry named `param_name` in the provided parameters list. See `ejpet:run/3` and `ejpet:match/4`.
 
 
 Note that `string` values should be binaries, and `regex` values MUST be `mp()` opaque objects returned by `re:compile/2`.
