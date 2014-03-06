@@ -31,7 +31,12 @@ expr([Item = {regex, _String} | Tail]) ->
     {Tail, Item};
 expr([double_star_slash | Tail]) ->
     {R, Expr} = pattern(Tail),
-    {R, {descendant, [Expr]}};
+    case R of
+        [slash_g | R2] ->
+            {R2, {descendant, [Expr], true}};
+        _ ->
+            {R, {descendant, [Expr], false}}
+    end;
 expr([star_slash | Tail]) ->
     {R, Expr} = pattern(Tail),
     case R of

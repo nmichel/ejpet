@@ -303,11 +303,20 @@ global_iterable_capture_test_() ->
              {"*/(?<node>{\"codec\":_, \"lang\":(?<lang>_)})/g",
               [{<<"[{\"codec\": \"audio\", \"lang\": \"fr\"}, {\"codec\": \"video\", \"lang\": \"en\"}, {\"codec\": \"foo\", \"lang\": \"it\"}]">>,
                 {true, [{"node", [<<"{\"codec\":\"audio\",\"lang\":\"fr\"}">>, <<"{\"codec\":\"video\",\"lang\":\"en\"}">>, <<"{\"codec\":\"foo\",\"lang\":\"it\"}">>]},
-                        {"lang",[<<"\"fr\"">>, <<"\"en\"">>, <<"\"it\"">>]}]}}
+                        {"lang", [<<"\"fr\"">>, <<"\"en\"">>, <<"\"it\"">>]}]}}
               ]}
             ],
     generate_test_list(Tests).
-    
+
+global_descendant_capture_test_() ->    
+    Tests = [
+             {"**/(?<fortytwo>42)/g",
+              [{<<"[42, 42, [42], {\"42\":42}, [{\"42\":[42]}]]">>,
+                {true, [{"fortytwo", [<<"42">>, <<"42">>, <<"42">>, <<"42">>, <<"42">>]}]}}
+              ]}
+            ],
+    generate_test_list(Tests).
+
 generate_test_list(TestDescs) ->
     [generate_test_list(TestDescs, Backend) || Backend <- ?BACKENDS].
 

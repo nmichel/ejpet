@@ -244,14 +244,14 @@ generate_matcher({iterable, Conditions, Flags}, Options) ->
             {false, []}
     end;
 
-%% ----- Descedant
+%% ----- Descendant
 
-generate_matcher({descendant, Conditions}, Options) ->
+generate_matcher({descendant, Conditions, Flags}, Options) ->
     Matchers = lists:map(fun(C) ->
                                  generate_matcher(C, Options)
                          end, Conditions),
     fun (Items, Params) when is_list(Items) ->
-            R = [deep_continue_until_value_match(Items, Matcher, Params) || Matcher <- Matchers],
+            R = [deep_continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
             {AccCaptures, AccFailedCount} = 
                 lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
                                     {Captures ++ CapAcc, FailedAcc};
@@ -409,41 +409,71 @@ continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
     continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, melt_(AccCaptures, LocalCaptures)}).
 
-deep_continue_until_value_match([{}], _Matcher, _Params) ->
+deep_continue_until_value_match([{}], _Matcher, _Params, _Flags) ->
     {{false, []}, []};
-deep_continue_until_value_match([], _Matcher, _Params) ->
+deep_continue_until_value_match([], _Matcher, _Params, _Flags) ->
     {{false, []}, []};
-deep_continue_until_value_match([{_Key, Val} | Tail], Matcher, Params) ->
+deep_continue_until_value_match(Iterable, Matcher, Params, true) ->
+    {deep_continue_until_end_(Iterable, Matcher, Params), []};
+deep_continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, false) ->
     case Matcher(Val, Params) of 
         R = {true, _} ->
             {R, Tail};
         _ ->
             case Val of
                 [_|_] ->
-                    case deep_continue_until_value_match(Val, Matcher, Params) of 
+                    case deep_continue_until_value_match(Val, Matcher, Params, false) of 
                         {R2 = {true, _}, _} ->
                             {R2, Tail};
                         _ ->
-                            deep_continue_until_value_match(Tail, Matcher, Params)
+                            deep_continue_until_value_match(Tail, Matcher, Params, false)
                     end;
                 _ ->
-                    deep_continue_until_value_match(Tail, Matcher, Params)
+                    deep_continue_until_value_match(Tail, Matcher, Params, false)
             end
     end;
-deep_continue_until_value_match([Item | Tail], Matcher, Params) ->
+deep_continue_until_value_match([Item | Tail], Matcher, Params, false) ->
     case Matcher(Item, Params) of 
         R = {true, _} ->
             {R, Tail};
         _ ->
             case Item of
                 [_|_] ->
-                    case deep_continue_until_value_match(Item, Matcher, Params) of 
+                    case deep_continue_until_value_match(Item, Matcher, Params, false) of 
                         {R2 = {true, _}, _} ->
                             {R2, Tail};
                         _ ->
-                            deep_continue_until_value_match(Tail, Matcher, Params)
+                            deep_continue_until_value_match(Tail, Matcher, Params, false)
                     end;
                 _ ->
-                    deep_continue_until_value_match(Tail, Matcher, Params)
+                    deep_continue_until_value_match(Tail, Matcher, Params, false)
             end
+    end.
+
+deep_continue_until_end_(Iterable, Matcher, Params) ->
+    deep_continue_until_end_(Iterable, Matcher, Params, {false, []}).
+
+deep_continue_until_end_([{}], _Matcher, _Params, Acc) ->
+    Acc;
+deep_continue_until_end_([], _Matcher, _Params, Acc) ->
+    Acc;
+deep_continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Val, Params),
+    LocalAcc = {LocalStatus or AccStatus, melt_(AccCaptures, LocalCaptures)},
+    case Val of
+        [_|_] ->
+            R = deep_continue_until_end_(Val, Matcher, Params, LocalAcc),
+            deep_continue_until_end_(Tail, Matcher, Params, R);
+        _ ->
+            deep_continue_until_end_(Tail, Matcher, Params, LocalAcc)
+    end;
+deep_continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Item, Params),
+    LocalAcc = {LocalStatus or AccStatus, melt_(AccCaptures, LocalCaptures)},
+    case Item of
+        [_|_] ->
+            R = deep_continue_until_end_(Item, Matcher, Params, LocalAcc),
+            deep_continue_until_end_(Tail, Matcher, Params, R);
+        _ ->
+            deep_continue_until_end_(Tail, Matcher, Params, LocalAcc)
     end.
