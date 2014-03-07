@@ -217,34 +217,26 @@ generate_matcher({iterable, Conditions, Flags}, Options) ->
     Matchers = lists:map(fun(C) ->
                                  generate_matcher(C, Options)
                          end, Conditions),
-    fun({struct, Items}, Params) ->
-            R = [continue_until_object_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
-            {AccCaptures, AccFailedCount} = 
-                lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                    {Captures ++ CapAcc, FailedAcc};
-                               (_, {CapAcc, FailedAcc}) ->
-                                    {CapAcc, FailedAcc + 1}
-                            end, {[], 0}, R),
-            case AccFailedCount of
-                0 ->
-                    {true, AccCaptures};
-                _ ->
-                    {false, []}
-            end;
+    DoMatch =
+        fun(Items, Params) ->
+                R = [continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
+                {AccCaptures, AccFailedCount} = 
+                    lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
+                                        {Captures ++ CapAcc, FailedAcc};
+                                   (_, {CapAcc, FailedAcc}) ->
+                                        {CapAcc, FailedAcc + 1}
+                                end, {[], 0}, R),
+                case AccFailedCount of
+                    0 ->
+                        {true, AccCaptures};
+                    _ ->
+                        {false, []}
+                end
+           end,
+    fun({struct, Items}, Params) when is_list(Items) ->
+            DoMatch(Items, Params);
        (Items, Params) when is_list(Items) ->
-            R = [continue_until_list_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
-            {AccCaptures, AccFailedCount} = 
-                lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                    {Captures ++ CapAcc, FailedAcc};
-                               (_, {CapAcc, FailedAcc}) ->
-                                    {CapAcc, FailedAcc + 1}
-                            end, {[], 0}, R),
-            case AccFailedCount of
-                0 ->
-                    {true, AccCaptures};
-                _ ->
-                    {false, []}
-            end;
+            DoMatch(Items, Params);
        (_, _Params) ->
             {false, []}
     end;
@@ -255,34 +247,26 @@ generate_matcher({descendant, Conditions, Flags}, Options) ->
     Matchers = lists:map(fun(C) ->
                                  generate_matcher(C, Options)
                          end, Conditions),
-    fun({struct, Items}, Params) ->
-            R = [deep_continue_until_object_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
-            {AccCaptures, AccFailedCount} = 
-                lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                    {Captures ++ CapAcc, FailedAcc};
-                               (_, {CapAcc, FailedAcc}) ->
-                                    {CapAcc, FailedAcc + 1}
-                            end, {[], 0}, R),
-            case AccFailedCount of
-                0 ->
-                    {true, AccCaptures};
-                _ ->
-                    {false, []}
-            end;
+    DoMatch =
+        fun(Items, Params) ->
+                R = [deep_continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
+                {AccCaptures, AccFailedCount} = 
+                    lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
+                                        {Captures ++ CapAcc, FailedAcc};
+                                   (_, {CapAcc, FailedAcc}) ->
+                                        {CapAcc, FailedAcc + 1}
+                                end, {[], 0}, R),
+                case AccFailedCount of
+                    0 ->
+                        {true, AccCaptures};
+                    _ ->
+                        {false, []}
+                end
+        end,
+    fun({struct, Items}, Params) when is_list(Items) ->
+            DoMatch(Items, Params);
        (Items, Params) when is_list(Items) ->
-            R = [deep_continue_until_list_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
-            {AccCaptures, AccFailedCount} = 
-                lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                    {Captures ++ CapAcc, FailedAcc};
-                               (_, {CapAcc, FailedAcc}) ->
-                                    {CapAcc, FailedAcc + 1}
-                            end, {[], 0}, R),
-            case AccFailedCount of
-                0 ->
-                    {true, AccCaptures};
-                _ ->
-                    {false, []}
-            end;
+            DoMatch(Items, Params);
        (_, _Params) ->
             {false, []}
     end;
@@ -375,140 +359,165 @@ continue_until_match([Item | Tail], Matcher, Params) ->
             continue_until_match(Tail, Matcher, Params)
     end.
 
-continue_until_object_value_match([], _Matcher, _Params, _Flags) ->
+continue_until_value_match([], _Matcher, _Params, _Flags) ->
     {{false, []}, []};
-continue_until_object_value_match(Iterable, Matcher, Params, true) ->
-    {continue_until_object_end_(Iterable, Matcher, Params), []};
-continue_until_object_value_match([{_Key, Val} | Tail], Matcher, Params, Flags) ->
-    case Matcher(Val, Params) of 
-        R = {true, _} ->
-            {R, Tail};
-        _ ->
-            continue_until_object_value_match(Tail, Matcher, Params, Flags)
-    end.
-
-continue_until_list_value_match([], _Matcher, _Params, _Flags) ->
-    {{false, []}, []};
-continue_until_list_value_match(Iterable, Matcher, Params, true) ->
-    {continue_until_list_end_(Iterable, Matcher, Params), []};
-continue_until_list_value_match([Item | Tail], Matcher, Params, Flags) ->
+continue_until_value_match(Iterable, Matcher, Params, true) ->
+    {continue_until_end_(Iterable, Matcher, Params), []};
+continue_until_value_match([Item = {struct, _Val} | Tail], Matcher, Params, Flags) ->
     case Matcher(Item, Params) of 
         R = {true, _} ->
             {R, Tail};
         _ ->
-            continue_until_list_value_match(Tail, Matcher, Params, Flags)
-    end.
-
-continue_until_object_end_(Iterable, Matcher, Params) ->
-    continue_until_object_end_(Iterable, Matcher, Params, {false, []}).
-
-continue_until_object_end_([], _Matcher, _Params, Acc) ->
-    Acc;
-continue_until_object_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
-    {LocalStatus, LocalCaptures} = Matcher(Val, Params),
-    continue_until_object_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)}).
-
-
-continue_until_list_end_(Iterable, Matcher, Params) ->
-    continue_until_list_end_(Iterable, Matcher, Params, {false, []}).
-
-continue_until_list_end_([], _Matcher, _Params, Acc) ->
-    Acc;
-continue_until_list_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
-    {LocalStatus, LocalCaptures} = Matcher(Item, Params),
-    continue_until_list_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)}).
-
-deep_continue_until_object_value_match([], _Matcher, _Params, _Flags) ->
-    {{false, []}, []};
-deep_continue_until_object_value_match(Iterable, Matcher, Params, true) ->
-    {deep_continue_until_object_end_(Iterable, Matcher, Params), []};
-deep_continue_until_object_value_match([{_Key, Val} | Tail], Matcher, Params, Flags) ->
+            continue_until_value_match(Tail, Matcher, Params, Flags)
+    end;
+continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, Flags) ->
     case Matcher(Val, Params) of 
         R = {true, _} ->
             {R, Tail};
         _ ->
-            case Val of
-                {struct, Pairs} ->
-                    case deep_continue_until_object_value_match(Pairs, Matcher, Params, Flags) of 
-                        {R2 = {true, _}, _} ->
-                            {R2, Tail};
-                        _ ->
-                            deep_continue_until_object_value_match(Tail, Matcher, Params, Flags)
-                    end;
-                [_|_] ->
-                    case deep_continue_until_list_value_match(Val, Matcher, Params, Flags) of 
-                        {R2 = {true, []}, _R} ->
-                            {R2, Tail};
-                        _ ->
-                            deep_continue_until_object_value_match(Tail, Matcher, Params, Flags)
-                    end;
-                _ ->
-                    deep_continue_until_object_value_match(Tail, Matcher, Params, Flags)
-            end
-    end.
-deep_continue_until_object_end_(Iterable, Matcher, Params) ->
-    deep_continue_until_object_end_(Iterable, Matcher, Params, {false, []}).
-
-deep_continue_until_object_end_([], _Matcher, _Params, Acc) ->
-    Acc;
-deep_continue_until_object_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
-    {LocalStatus, LocalCaptures} = Matcher(Val, Params),
-    LocalAcc = {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)},
-    case Val of
-        {struct, Props} ->
-            R = deep_continue_until_object_end_(Props, Matcher, Params, LocalAcc),
-            deep_continue_until_object_end_(Tail, Matcher, Params, R);
-        [_|_] ->
-            R = deep_continue_until_list_end_(Val, Matcher, Params, LocalAcc),
-            deep_continue_until_object_end_(Tail, Matcher, Params, R);
+            continue_until_value_match(Tail, Matcher, Params, Flags)
+    end;
+continue_until_value_match([Item | Tail], Matcher, Params, Flags) ->
+    case Matcher(Item, Params) of 
+        R = {true, _} ->
+            {R, Tail};
         _ ->
-            deep_continue_until_object_end_(Tail, Matcher, Params, LocalAcc)
+            continue_until_value_match(Tail, Matcher, Params, Flags)
     end.
 
-deep_continue_until_list_value_match([], _Matcher, _Params, _Flags) ->
+continue_until_end_(Iterable, Matcher, Params) ->
+    continue_until_end_(Iterable, Matcher, Params, {false, []}).
+
+continue_until_end_([], _Matcher, _Params, Acc) ->
+    Acc;
+continue_until_end_([Item = {struct, _Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Item, Params),
+    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)});
+continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Val, Params),
+    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)});
+continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Item, Params),
+    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)}).
+
+deep_continue_until_value_match([], _Matcher, _Params, _Flags) ->
     {{false, []}, []};
-deep_continue_until_list_value_match(Iterable, Matcher, Params, true) ->
-    {deep_continue_until_list_end_(Iterable, Matcher, Params), []};
-deep_continue_until_list_value_match([Item | Tail], Matcher, Params, Flags) ->
+deep_continue_until_value_match(Iterable, Matcher, Params, true) ->
+    {deep_continue_until_end_(Iterable, Matcher, Params), []};
+deep_continue_until_value_match([Item = {struct, _Val} | Tail], Matcher, Params, Flags) ->
     case Matcher(Item, Params) of 
         R = {true, _} ->
             {R, Tail};
         _ ->
             case Item of
                 {struct, Pairs} ->
-                    case deep_continue_until_object_value_match(Pairs, Matcher, Params, Flags) of 
+                    case deep_continue_until_value_match(Pairs, Matcher, Params, Flags) of 
                         {R2 = {true, _}, _} ->
                             {R2, Tail};
                         _ ->
-                            deep_continue_until_list_value_match(Tail, Matcher, Params, Flags)
+                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
                     end;
                 [_|_] ->
-                    case deep_continue_until_list_value_match(Item, Matcher, Params, Flags) of 
+                    case deep_continue_until_value_match(Item, Matcher, Params, Flags) of 
                         {R2 = {true, _}, _} ->
                             {R2, Tail};
                         _ ->
-                            deep_continue_until_list_value_match(Tail, Matcher, Params, Flags)
+                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
                     end;
                 _ ->
-                    deep_continue_until_list_value_match(Tail, Matcher, Params, Flags)
+                    deep_continue_until_value_match(Tail, Matcher, Params, Flags)
+            end
+    end;
+deep_continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, Flags) ->
+    case Matcher(Val, Params) of 
+        R = {true, _} ->
+            {R, Tail};
+        _ ->
+            case Val of
+                {struct, Pairs} ->
+                    case deep_continue_until_value_match(Pairs, Matcher, Params, Flags) of 
+                        {R2 = {true, _}, _} ->
+                            {R2, Tail};
+                        _ ->
+                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
+                    end;
+                [_|_] ->
+                    case deep_continue_until_value_match(Val, Matcher, Params, Flags) of 
+                        {R2 = {true, []}, _R} ->
+                            {R2, Tail};
+                        _ ->
+                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
+                    end;
+                _ ->
+                    deep_continue_until_value_match(Tail, Matcher, Params, Flags)
+            end
+    end;
+deep_continue_until_value_match([Item | Tail], Matcher, Params, Flags) ->
+    case Matcher(Item, Params) of 
+        R = {true, _} ->
+            {R, Tail};
+        _ ->
+            case Item of
+                {struct, Pairs} ->
+                    case deep_continue_until_value_match(Pairs, Matcher, Params, Flags) of 
+                        {R2 = {true, _}, _} ->
+                            {R2, Tail};
+                        _ ->
+                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
+                    end;
+                [_|_] ->
+                    case deep_continue_until_value_match(Item, Matcher, Params, Flags) of 
+                        {R2 = {true, _}, _} ->
+                            {R2, Tail};
+                        _ ->
+                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
+                    end;
+                _ ->
+                    deep_continue_until_value_match(Tail, Matcher, Params, Flags)
             end
     end.
 
-deep_continue_until_list_end_(Iterable, Matcher, Params) ->
-    deep_continue_until_list_end_(Iterable, Matcher, Params, {false, []}).
+deep_continue_until_end_(Iterable, Matcher, Params) ->
+    deep_continue_until_end_(Iterable, Matcher, Params, {false, []}).
 
-deep_continue_until_list_end_([], _Matcher, _Params, Acc) ->
+deep_continue_until_end_([], _Matcher, _Params, Acc) ->
     Acc;
-deep_continue_until_list_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+deep_continue_until_end_([Item = {struct, _Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
     LocalAcc = {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)},
     case Item of
         {struct, Props} ->
-            R = deep_continue_until_object_end_(Props, Matcher, Params, LocalAcc),
-            deep_continue_until_list_end_(Tail, Matcher, Params, R);
+            R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
+            deep_continue_until_end_(Tail, Matcher, Params, R);
         [_|_] ->
-            R = deep_continue_until_list_end_(Item, Matcher, Params, LocalAcc),
-            deep_continue_until_list_end_(Tail, Matcher, Params, R);
+            R = deep_continue_until_end_(Item, Matcher, Params, LocalAcc),
+            deep_continue_until_end_(Tail, Matcher, Params, R);
         _ ->
-            deep_continue_until_list_end_(Tail, Matcher, Params, LocalAcc)
+            deep_continue_until_end_(Tail, Matcher, Params, LocalAcc)
+    end;
+deep_continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Val, Params),
+    LocalAcc = {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)},
+    case Val of
+        {struct, Props} ->
+            R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
+            deep_continue_until_end_(Tail, Matcher, Params, R);
+        [_|_] ->
+            R = deep_continue_until_end_(Val, Matcher, Params, LocalAcc),
+            deep_continue_until_end_(Tail, Matcher, Params, R);
+        _ ->
+            deep_continue_until_end_(Tail, Matcher, Params, LocalAcc)
+    end;
+deep_continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+    {LocalStatus, LocalCaptures} = Matcher(Item, Params),
+    LocalAcc = {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)},
+    case Item of
+        {struct, Props} ->
+            R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
+            deep_continue_until_end_(Tail, Matcher, Params, R);
+        [_|_] ->
+            R = deep_continue_until_end_(Item, Matcher, Params, LocalAcc),
+            deep_continue_until_end_(Tail, Matcher, Params, R);
+        _ ->
+            deep_continue_until_end_(Tail, Matcher, Params, LocalAcc)
     end.

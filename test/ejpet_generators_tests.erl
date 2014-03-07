@@ -4,8 +4,7 @@
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-%-define(BACKENDS, [jsx, jiffy, mochijson2]).
--define(BACKENDS, [jsx]).
+-define(BACKENDS, [jsx, jiffy, mochijson2]).
 -define(REF_BACKEND, jsx).
 
 
