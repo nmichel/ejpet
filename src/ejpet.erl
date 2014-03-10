@@ -65,8 +65,8 @@ match(Subject, Pattern, Options, Params) when is_list(Subject) ->
 match(Subject, {ejpet, Backend, Fun}, _Options, Params) ->
     Node = decode(Subject, Backend),
     case Fun(Node, Params) of
-        {true, Captures} ->
-            {true, [{Name, encode(Capture, Backend)} || {Name, Capture} <- Captures]};
+        {true, CaptureList} ->
+            {true, [{Name, [encode(Capture, Backend) || Capture <- Captures]} || {Name, Captures} <- CaptureList]};
         R ->
             R
     end;
