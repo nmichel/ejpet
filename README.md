@@ -87,12 +87,12 @@ Ok. Now define what we are looking for, and what we want to get
 
 ```erlang
 3>  O = ejpet:compile("[*, {\"ip_multicast\":\"239.100.10.4\",
-3>                          \"pcr_pid\":(?<pcr>_),
-3>                          \"pids\":<{\"language\": #\"^fr\",
-3>                                     \"number\": (?<apid>_),
-3>                                     \"type\": (?<acodec>_)},
-3>                                    {\"type\": (?<vcodec>#\"Video\"),
-3>                                     \"number\": (?<vpid>_)}>}, *]", jsx).
+                            \"pcr_pid\":(?<pcr>_),
+                            \"pids\":<{\"language\": #\"^fr\",
+                                       \"number\": (?<apid>_),
+                                       \"type\": (?<acodec>_)},
+                                      {\"type\": (?<vcodec>#\"Video\"),
+                                       \"number\": (?<vpid>_)}>}, *]", jsx).
 {ejpet,jsx,#Fun<ejpet_jsx_generators.9.11467207>}
 ```
 
@@ -106,8 +106,8 @@ Run and seek ...
 Here you are !
 
     {true,[{"vpid",520},
-           {"vcodec",<<"Video (MPEG2)">>},
-           {"acodec",<<"Audio (MPEG1)">>},
+           {"vcodec",[<<"Video (MPEG2)">>]},
+           {"acodec",[<<"Audio (MPEG1)">>]},
            {"apid",530},
            {"pcr",520}]}
 
@@ -132,6 +132,11 @@ Expression syntax
 | `{ kv* }` | object for which all kv (key/value) patterns are matched | Order does not matter |
 | `[ item* (, *)?]` | list for which all item patterns are matched | Order DOES matter |
 | `< value* >` | value set (list, or object values) for which all value patterns are matched | Order does not matter 
+| `*/value` | syntactic sugar for `<value>` |  
+| `< value* /g>` | same as previous but search for ALL matches. Useful only when capturing | Order does not matter
+| `*/value/g` | syntactic sugar for `<value/g>` |  
+| `**/value` | deep search for first value matching the value pattern. |  
+| `**/value/g` | same as previous but search for ALL matches. Useful only when capturing |  
 | `(?<name>expr)` | capture expression `expr` in return value `name` | Every JSON expression may be captured
 | `(!<name>type)` | match json object of type `type` against parameter named `name`  |
 
@@ -189,7 +194,9 @@ Codepoint produced by evaluating an escape sequence of the form `\uABCD` is *NOT
 Captures
 ----
 
-Every pattern `p` can be captured by simply substituing it by `(?<variable_name>p)`.
+Every pattern `p` can be captured by simply substituing it by `(?<variable_name>p)`. Captures are returned as pairs `{variable_name, Captures}`. `Captures`is the list of JSON terms matching the pattern.
+
+Usually there is only one item in the list. Value set and deep search patterns can return bigger capture sets, when used with the `/g` modifier.
 
 Parameters Injection
 ----
@@ -204,6 +211,7 @@ Note that `string` values should be binaries, and `regex` values MUST be `mp()` 
 # API
 
 ```erlang
+backend() = jsx | jiffy | mochijson2
 epm() = {ejpet, term(), term()}
 expr_src() = string()
 compile_option() = {number_strict_match, (true|false)}
@@ -217,14 +225,23 @@ match_param_name = binary()
 match_param_value = true | false | number | binary() | re::mp()
 match_res() = {match_stat(), [capture()]
 match_stat() = true | false
-capture() = {capture_name(), capture_value()}
+capture() = {capture_name(), [capture_value()]}
 capture_name() = string()
 capture_value() = json_term() | binary()
+
+ejpet:decode(JSONText, Backend) -> json_term()
+
+  Backend = backend()
+
+ejpet:encode(JSONTerm, Backend) -> json_term()
+
+  JSONTerm = json_term()
+  Backend = backend()
 
 ejpet:compile(Expr, Backend, Options) -> epm()
 
   Expr = expr_src()
-  Backend = jsx | jiffy | mochijson2
+  Backend = backend()
   Options = [Option]
   Option = compile_option()
 
@@ -235,7 +252,11 @@ ejpet:compile(Expr, Backend) -> epm()
 ejpet:compile(Expr) -> epm()
 
   Same as ejpet:compile(Expr, jsx, [])
-  
+
+ejpet:backend(EPM) -> backend()
+
+  EPM = epm()
+
 ejpet:run(JSONTerm, EPM, Params) -> match_res()
 
   EPM = epm()
@@ -314,9 +335,14 @@ ejpet:match(JSONText, Expr) -> match_res()
 
 | Expression | Test | Capture(s) | Code snippet |
 ---|---|---|----
-| `**/(?<subnode>{_:42})` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | subnode: `{"foo":42,"bar":{}}` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "**/(?<subnode>{_:42})").`
-| `(?<all>**/(?<subnode>{_:42}))` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | all: `[{"foo":null},{"foo":42,"bar":{}}]}`,subnode: `{"foo":42,"bar":{}}` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all>**/(?<subnode>{_:42}))").`
+| `**/(?<subnode>{_:42})` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | subnode: `[{"foo":42,"bar":{}}]` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "**/(?<subnode>{_:42})").`
+| `(?<all>**/(?<subnode>{_:42}))` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | all: `[[{"foo":null},{"foo":42,"bar":{}}]]`,subnode: `[{"foo":42,"bar":{}}]` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all>**/(?<subnode>{_:42}))").`
 
+## Global captures
+
+| Expression | Test | Capture(s) | Code snippet |
+---|---|---|----
+|`*/(?<node>{\"codec\":_, \"lang\":(?<lang>_)})/g`|`[{"codec": "audio", "lang": "fr"}, {"codec": "video", "lang": "en"}, {"codec": "foo", "lang": "it"}]`|node: `[{"codec":"audio","lang":"fr"}, {"codec":"video","lang":"en"}, {"codec":"foo","lang":"it"}]` lang: `["fr", "en", "it"]`| `ejpet:match(<<"[{\"codec\": \"audio\", \"lang\": \"fr\"}, {\"codec\": \"video\", \"lang\": \"en\"}, {\"codec\": \"foo\", \"lang\": \"it\"}]">>, <<"*/(?<node>{\"codec\":_, \"lang\":(?<lang>_)})/g">>)`
 
 ### Notes
 
@@ -328,8 +354,8 @@ The real captured values depends on the API function used, and may be:
 ```erlang
 1> ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all>**/(?<subnode>{_:42}))").
 {true,[{"all",
-        <<"[{\"foo\":null},{\"foo\":42,\"bar\":{}}]">>},
-       {"subnode",<<"{\"foo\":42,\"bar\":{}}">>}]}
+        [<<"[{\"foo\":null},{\"foo\":42,\"bar\":{}}]">>}],
+       {"subnode",[<<"{\"foo\":42,\"bar\":{}}">>]}]}
 ```
 
 * (jsx | jiffy | mochijson2) JSON value, depending on the backend, for easier further processing.
@@ -339,22 +365,22 @@ The real captured values depends on the API function used, and may be:
 {ejpet,jsx,#Fun<ejpet_jsx_generators.19.98422695>}
 2> ejpet:run((ejpet:backend(JSX)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>), JSX).
 {true,[{"all",
-        [[{<<"foo">>,null}],[{<<"foo">>,42},{<<"bar">>,[{}]}]]},
-       {"subnode",[{<<"foo">>,42},{<<"bar">>,[{}]}]}]}
+        [[[{<<"foo">>,null}],[{<<"foo">>,42},{<<"bar">>,[{}]}]]]},
+       {"subnode",[[{<<"foo">>,42},{<<"bar">>,[{}]}]]}]}
 
 39> Mochi = ejpet:compile("(?<all>**/(?<subnode>{_:42}))", mochijson2, []).
 {ejpet,mochijson2,
        #Fun<ejpet_mochijson2_generators.19.110863078>}
-40> ejpet:run(ejpet:backend(Mochi)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>), Mochi).
+40> ejpet:run((ejpet:backend(Mochi)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>), Mochi).
 {true,[{"all",
-        [{struct,[{<<"foo">>,null}]},
-         {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]},
+        [[{struct,[{<<"foo">>,null}]},
+          {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]]},
        {"subnode",
-        {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}}]}
+        [{struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]}]}
 ```
 
 ## Injections
 
 | Expression | Test | parameters | Capture(s) | Code snippet |
 ---|---|---|---|---
-| `*/(?<subnode>(!<what>number))` | `[41, 42, 43]` | `[{<<"what">>, 42}]` | subnode: `42` | `ejpet:match(<<"[41, 42, 43]">>, "*/(?<subnode>(!<what>number))", [], [{<<"what">>, 42}]).`
+| `*/(?<subnode>(!<what>number))` | `[41, 42, 43]` | `[{<<"what">>, 42}]` | subnode: `[42]` | `ejpet:match(<<"[41, 42, 43]">>, "*/(?<subnode>(!<what>number))", [], [{<<"what">>, 42}]).`
