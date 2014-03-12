@@ -18,7 +18,7 @@ basic_test_() ->
                {<<"{\"foo\": []}">>, {false, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 object_test_() ->
     Tests = [
@@ -41,7 +41,7 @@ object_test_() ->
               [{<<"{\"foo\": true, \"bar\": {\"neh\": 42}}">>, {true, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 list_test_() ->
     Tests = [
@@ -86,7 +86,7 @@ list_test_() ->
                {<<"[{\"foo\": [42]}, \"neh\"]">>, {false, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 iterable_test_() ->
     Tests = [
@@ -147,7 +147,7 @@ iterable_test_() ->
               [{<<"[{\"bar\": [42]}]">>, {true, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 descendant_test_() ->
     Tests = [
@@ -175,7 +175,7 @@ descendant_test_() ->
               [{<<"[{\"bar\": 42}]">>, {true, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 complex_test_() ->
     Tests = [
@@ -186,7 +186,7 @@ complex_test_() ->
                {<<"{\"bar\": 42, \"foo\": {}}">>, {false, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 capture_test_() ->
     Tests = [
@@ -209,7 +209,7 @@ capture_test_() ->
               [{<<"[1, 2, {\"foo\": 42, \"bar\": [{\"neh\": 42}]}, 41, 42]">>, {true, [{"found", [<<"{\"neh\":42}">>]}]}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 utf8_test_() ->
     Tests = [
@@ -227,7 +227,7 @@ utf8_test_() ->
                {<<"{\"foo\": [\"!漂亮的綠色汽車\"]}"/utf8>>, {false, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 injection_test_() ->
     Tests = [
@@ -259,7 +259,7 @@ injection_test_() ->
                {<<"{\"foo\": [true, 42]}">>, [{<<"what">>, 42}], {false, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 injection_regex_test_() ->
     {ok, MP1} = re:compile("foo"),
@@ -278,7 +278,7 @@ injection_regex_test_() ->
                {<<"\"foo\\bbarneh\"">>, [{<<"what">>, MP2}], {false, []}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 injection_and_capture_test_() ->
     {ok, MP1} = re:compile("^id_\\d+$"),
@@ -295,7 +295,7 @@ injection_and_capture_test_() ->
                                                                                                                                                                 {"who", [<<"{\"name\":\"grp_42\"}">>]}]}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 global_iterable_capture_test_() ->
     Tests = [
@@ -305,7 +305,7 @@ global_iterable_capture_test_() ->
                         {"lang", [<<"\"fr\"">>, <<"\"en\"">>, <<"\"it\"">>]}]}}
               ]}
             ],
-    generate_test_list(Tests).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 global_descendant_capture_test_() ->    
     Tests = [
@@ -314,49 +314,7 @@ global_descendant_capture_test_() ->
                 {true, [{"fortytwo", [<<"42">>, <<"42">>, <<"42">>, <<"42">>, <<"42">>]}]}}
               ]}
             ],
-    generate_test_list(Tests).
-
-generate_test_list(TestDescs) ->
-    [generate_test_list(TestDescs, Backend) || Backend <- ?BACKENDS].
-
-generate_test_list(TestDescs, Backend) ->
-    lists:reverse(
-      lists:foldl(fun({Pattern, T}, FnAcc) ->
-                          %% Produce the matcher
-                          %% 
-                          {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, [])),
-                          F = (ejpet:generator(Backend)):generate_matcher(AST, []),
-
-                          BuildTest = fun(Node, Injected, Expected = {ExpStatus, _ExpCaptures}) ->
-                                              PatternPart = 
-                                                  if 
-                                                      is_binary(Pattern) ->
-                                                          unicode:characters_to_list(Pattern, utf8);
-                                                      true ->
-                                                          Pattern
-                                                  end,
-                                              TestName = PatternPart ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(ExpStatus),
-                                              
-                                              %% Execute the test
-                                              %% 
-                                              {Status, Captures} = F(ejpet:decode(Node, Backend), Injected),
-
-                                              %% Transform captures to text
-                                              %% 
-                                              JSONCaptures = [{VarName, [ejpet:encode(Cap, Backend) || Cap <- Caps]} || {VarName, Caps} <- Captures],
-
-                                              %% Parse again and stringify captures using the reference backend
-                                              %% 
-                                              RefCaptures = [{VarName, [ejpet:encode(ejpet:decode(Cap, ?REF_BACKEND), ?REF_BACKEND) || Cap <- Caps]} || {VarName, Caps} <- JSONCaptures],
-
-                                              {TestName, ?_test(?assert({Status, RefCaptures} == Expected))}
-                                      end,
-                          lists:foldl(fun({Node, Expected}, Acc) ->
-                                              [BuildTest(Node, [], Expected) | Acc];
-                                         ({Node, Injected, Expected}, Acc) ->
-                                              [BuildTest(Node, Injected, Expected) | Acc]
-                                      end, FnAcc, T)
-                  end, [], TestDescs)).
+    ejpet_test_helpers:generate_test_list(Tests).
 
 -endif.
 
