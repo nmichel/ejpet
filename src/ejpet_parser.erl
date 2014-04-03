@@ -11,9 +11,6 @@ pattern(Tokens = [open_paren, {inject, _} | _]) ->
 pattern([open_paren, {capture, Name} | Tail]) ->
     {[close_paren | R], Expr} = expr(Tail),
     {R, {capture, Expr, Name}};
-pattern([open_paren | Tail]) ->
-    {[close_paren | R], Expr} = expr(Tail),
-    {R, {capture, Expr, positional}};
 pattern(Tokens) ->
     expr(Tokens).
 

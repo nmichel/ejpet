@@ -9,8 +9,6 @@ capture_test_() ->
     Tests = [
              {"(?<var1>42)",
               {capture,{number,42},"var1"}},
-             {"(42)",
-              {capture,{number,42},positional}},
              {"(!<var1>string)",
               {inject, string, "var1"}},
              {"(!<var1>boolean)",
