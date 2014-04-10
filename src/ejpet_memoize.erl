@@ -3,60 +3,67 @@
 
 -export([build_key/1]).
 
--define(STOB(S), (list_to_binary(S))).
+-define(STOB(S), <<(erlang:phash2(S)):4/little-signed-integer-unit:8>>).
 -define(BS(S, T), <<S, (T)/binary>>).
 -define(BB(B, T), <<(B)/binary, (T)/binary>>).
 
 build_key({capture, {_AST, Hash}, Name}) ->
-    ?BB(?BS("capture", Hash), ?STOB(Name));
+    ?BB(?BS("c", Hash), ?STOB(Name));
 build_key(true) ->
-    <<"true">>;
+    <<"t">>;
 build_key(false) ->
-    <<"false">>;
+    <<"f">>;
 build_key(null) ->
-    <<"null">>;
+    <<"n">>;
 build_key({number, Value}) ->
-    ?BS("number", ?STOB(lists:concat([Value])));
+    ?BS("f", ?STOB(Value));
 build_key({string, String}) ->
-    ?BS("string", String);
+    ?BS("s", ?STOB(String));
 build_key({regex, String}) ->
-    ?BS("regex", String);
+    ?BS("r", ?STOB(String));
 build_key({descendant, [{_AST, Hash}], true}) ->
-    ?BS("descendantg", Hash);
+    ?BS("dg", Hash);
 build_key({descendant, [{_AST, Hash}], false}) ->
-    ?BS("descendant", Hash);
+    ?BS("d", Hash);
 build_key(any) ->
-    <<"any">>;
+    <<"a">>;
 build_key({inject, Type, Name}) ->
-    ?BS("inject", ?STOB(lists:concat([Type, Name])));
+    ?BS("i", ?STOB([Type, Name]));
 build_key({object, any}) ->
-    <<"objectany">>;
+    <<"oa">>;
 build_key({object, Acc}) ->
-    ?BS("object", fold_key_list(Acc));
+    ?BS("o", fold_expr_list(Acc));
 build_key({pair, {string, String}, any}) ->
-    ?BB(?BS("pairstring", String), ?STOB("any"));
+    ?BB(?BS("ps", ?STOB(String)), ?STOB("any"));
 build_key({pair, {string, String}, {_AST, Hash}}) ->
-    ?BB(?BS("pairstring", String), Hash);
+    ?BB(?BS("ps", ?STOB(String)), Hash);
 build_key({pair, any, {_AST, Hash}}) ->
-    ?BS("pairany", Hash);
+    ?BS("pa", Hash);
 build_key({list, empty}) ->
-    <<"listempty">>;
+    <<"le">>;
 build_key({list, any}) ->
-    <<"listany">>;
+    <<"la">>;
 build_key({find, {_AST, Hash}}) ->
-    ?BS("find", Hash);
+    ?BS("f", Hash);
 build_key(eol) ->
-    <<"eol">>;
+    <<"e">>;
 build_key({list, Acc}) ->
-    ?BS("list", fold_key_list(Acc));
+    ?BS("l", fold_list_expr_list(Acc));
 build_key({iterable, any}) ->
-    <<"iterableany">>;
+    <<"ia">>;
 build_key({iterable, Acc, true}) ->
-    ?BS("iterableg", fold_key_list(Acc));
+    ?BS("ig", fold_expr_list(Acc));
 build_key({iterable, Acc, false}) ->
-    ?BS("iterable", fold_key_list(Acc)).
+    ?BS("i", fold_expr_list(Acc)).
 
-fold_key_list(Ks) ->
-    lists:foldl(fun({_, HE}, A) ->
+fold_expr_list(Ks) ->
+    lists:foldl(fun({_, HE}, A)->
+                        <<A/binary, HE/binary>>
+                end, <<"">>, Ks).
+
+fold_list_expr_list(Ks) ->
+    lists:foldl(fun({find, {_, HE}}, A) ->
+                        <<A/binary, HE/binary>>;
+                   ({_, HE}, A)->
                         <<A/binary, HE/binary>>
                 end, <<"">>, Ks).
