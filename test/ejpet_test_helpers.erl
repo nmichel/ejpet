@@ -20,7 +20,7 @@ generate_test_list(TestDescs, Backend) ->
                           %% Produce the matcher
                           %% 
                           {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, [])),
-                          F = (ejpet:generator(Backend)):generate_matcher(AST, []),
+                          F = ejpet_generator:generate_matcher(AST, [], (ejpet:generator(Backend))),
 
                           BuildTest = fun(Node, Injected, Expected = {ExpStatus, _ExpCaptures}) ->
                                               PatternPart = 

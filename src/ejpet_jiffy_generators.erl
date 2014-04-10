@@ -6,7 +6,7 @@
 %% ---- Capture 
 
 generate_matcher({capture, Pattern, Mode}, Options) ->
-    Matcher = generate_matcher(Pattern, Options),
+    Matcher = ejpet_generator:generate_matcher(Pattern, Options, ?MODULE),
     fun(JSON, Params) ->
             case Matcher(JSON, Params) of
                 {true, Captures} ->
@@ -100,7 +100,7 @@ generate_matcher({object, any}, _Options) ->
     end;
 generate_matcher({object, Conditions}, Options) ->
     PairMatchers = lists:map(fun(C) ->
-                                     generate_matcher(C, Options)
+                                     ejpet_generator:generate_matcher(C, Options, ?MODULE)
                              end, Conditions),
     fun({Items}, Params) when is_list(Items) ->
             R = [continue_until_match(Items, PairMatcher, Params) || PairMatcher <- PairMatchers],
@@ -120,7 +120,7 @@ generate_matcher({object, Conditions}, Options) ->
             {false, []}
     end;
 generate_matcher({pair, any, ValMatcherDesc}, Options) ->
-    ValMatcher = generate_matcher(ValMatcherDesc, Options),
+    ValMatcher = ejpet_generator:generate_matcher(ValMatcherDesc, Options, ?MODULE),
     fun({_Key, Val}, Params) ->
             ValMatcher(Val, Params);
        (_, _Params) ->
@@ -135,7 +135,7 @@ generate_matcher({pair, KeyMatcherDesc, any}, Options) ->
     end;
 generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}, Options) ->
     KeyMatcher = generate_matcher(KeyMatcherDesc, Options),
-    ValMatcher = generate_matcher(ValMatcherDesc, Options),
+    ValMatcher = ejpet_generator:generate_matcher(ValMatcherDesc, Options, ?MODULE),
     fun({Key, Val}, Params) ->
             {S1, Cap1} = KeyMatcher(Key, Params),
             {S2, Cap2} = ValMatcher(Val, Params),
@@ -169,14 +169,14 @@ generate_matcher({list, any}, _Options) ->
 
 generate_matcher({list, Conditions}, Options) ->
     ItemMatchers = lists:map(fun({find, Expr}) ->
-                                     Matcher = generate_matcher(Expr, Options),
+                                     Matcher = ejpet_generator:generate_matcher(Expr, Options, ?MODULE),
                                      fun(Items, Params) when is_list(Items) ->
                                              continue_until_match(Items, Matcher, Params);
                                         (_, _Params) ->
                                              {{false, []}, []}
                                      end;
                                 (Expr) ->
-                                     Matcher = generate_matcher(Expr, Options),
+                                     Matcher = ejpet_generator:generate_matcher(Expr, Options, ?MODULE),
                                      fun([], Params) ->
                                              {Matcher([], Params), []};
                                         ([Head|Tail], Params) ->
@@ -218,7 +218,7 @@ generate_matcher({iterable, any}, _Options) ->
 
 generate_matcher({iterable, Conditions, Flags}, Options) ->
     Matchers = lists:map(fun(C) ->
-                                 generate_matcher(C, Options)
+                                 ejpet_generator:generate_matcher(C, Options, ?MODULE)
                          end, Conditions),
     DoMatch =
         fun(Items, Params) ->
@@ -248,7 +248,7 @@ generate_matcher({iterable, Conditions, Flags}, Options) ->
 
 generate_matcher({descendant, Conditions, Flags}, Options) ->
     Matchers = lists:map(fun(C) ->
-                                 generate_matcher(C, Options)
+                                 ejpet_generator:generate_matcher(C, Options, ?MODULE)
                          end, Conditions),
     DoMatch =
         fun(Items, Params) ->

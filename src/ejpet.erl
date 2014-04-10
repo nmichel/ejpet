@@ -43,7 +43,7 @@ compile(Pattern, Backend) ->
 
 compile(Pattern, Backend, Options) ->
     {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, Options)),
-    {ejpet, Backend, (generator(Backend)):generate_matcher(AST, Options)}.
+    {ejpet, Backend, ejpet_generator:generate_matcher(AST, Options, (generator(Backend)))}.
 
 backend({ejpet, Backend, _Fun}) ->
     Backend.
