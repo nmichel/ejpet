@@ -28,7 +28,7 @@ build_key({descendant, [{_AST, Hash}], false}) ->
 build_key(any) ->
     <<"a">>;
 build_key({inject, Type, Name}) ->
-    ?BS("i", ?STOB([Type, Name]));
+    ?BB(?BS("i", ?STOB(Type)), ?STOB(Name));
 build_key({object, any}) ->
     <<"oa">>;
 build_key({object, Acc}) ->
