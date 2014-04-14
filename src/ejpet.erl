@@ -3,7 +3,7 @@
 
 -export([decode/2, encode/2,
          generator/1,
-         compile/1, compile/2, compile/3,
+         compile/1, compile/2, compile/3, compile/4,
          backend/1,
          run/2, run/3,
          match/2, match/3, match/4]).
@@ -11,6 +11,7 @@
 
 -define(DEFAULT_BACKEND, jsx).
 -define(DEFAULT_OPTIONS, []).
+-define(DEFAULT_CACHE_FUN, (ejpet_default_cache:build_cache_fun())).
 
 
 %% -----
@@ -36,14 +37,17 @@ generator(Backend) when is_atom(Backend) ->
     list_to_atom("ejpet_" ++ atom_to_list(Backend) ++ "_generators").
 
 compile(Pattern) ->
-    compile(Pattern, ?DEFAULT_BACKEND, ?DEFAULT_OPTIONS).
+    compile(Pattern, ?DEFAULT_BACKEND, ?DEFAULT_OPTIONS, ?DEFAULT_CACHE_FUN).
 
 compile(Pattern, Backend) ->
-    compile(Pattern, Backend, ?DEFAULT_OPTIONS).
+    compile(Pattern, Backend, ?DEFAULT_OPTIONS, ?DEFAULT_CACHE_FUN).
 
 compile(Pattern, Backend, Options) ->
+    compile(Pattern, Backend, Options, ?DEFAULT_CACHE_FUN).
+
+compile(Pattern, Backend, Options, CacheFun) ->
     {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, Options)),
-    {ejpet, Backend, ejpet_generator:generate_matcher(AST, Options, (generator(Backend)))}.
+    {ejpet, Backend, ejpet_generator:generate_matcher(AST, Options, (generator(Backend)), CacheFun)}.
 
 backend({ejpet, Backend, _Fun}) ->
     Backend.

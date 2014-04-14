@@ -1,12 +1,12 @@
 -module(ejpet_jiffy_generators).
 
--export([generate_matcher/2]).
+-export([generate_matcher/3]).
 
 
 %% ---- Capture 
 
-generate_matcher({capture, Pattern, Mode}, Options) ->
-    Matcher = ejpet_generator:generate_matcher(Pattern, Options, ?MODULE),
+generate_matcher({capture, Pattern, Mode}, Options, CB) ->
+    Matcher = CB(Pattern, Options, CB),
     fun(JSON, Params) ->
             case Matcher(JSON, Params) of
                 {true, Captures} ->
@@ -18,9 +18,9 @@ generate_matcher({capture, Pattern, Mode}, Options) ->
 
 %% ---- Injection 
 
-generate_matcher({inject, Type, Name}, Options) when is_list(Name) ->
-    generate_matcher({inject, Type, list_to_binary(Name)}, Options);
-generate_matcher({inject, boolean, Name}, _Options) ->
+generate_matcher({inject, Type, Name}, Options, CB) when is_list(Name) ->
+    generate_matcher({inject, Type, list_to_binary(Name)}, Options, CB);
+generate_matcher({inject, boolean, Name}, _Options, _CB) ->
     fun(What, Params) when What == true; What == false ->
             case proplists:get_value(Name, Params) of 
                 What ->
@@ -31,7 +31,7 @@ generate_matcher({inject, boolean, Name}, _Options) ->
        (_, _Params) ->
             {false, []}
     end;
-generate_matcher({inject, string, Name}, _Options) ->
+generate_matcher({inject, string, Name}, _Options, _CB) ->
     fun(What, Params) when is_binary(What) ->
             case proplists:get_value(Name, Params) of 
                 What ->
@@ -42,7 +42,7 @@ generate_matcher({inject, string, Name}, _Options) ->
        (_, _Params) ->
             {false, []}
     end;
-generate_matcher({inject, number, Name}, Options) ->
+generate_matcher({inject, number, Name}, Options, _CB) ->
     fun(What, Params) when is_number(What) ->
             case proplists:get_value(Name, Params) of 
                 undefined ->
@@ -68,7 +68,7 @@ generate_matcher({inject, number, Name}, Options) ->
        (_, _Params) ->
             {false, []}
     end;
-generate_matcher({inject, regex, Name}, _Options) ->
+generate_matcher({inject, regex, Name}, _Options, _CB) ->
     fun(What, Params) when is_binary(What) ->
             case proplists:get_value(Name, Params) of 
                 undefined ->
@@ -90,7 +90,7 @@ generate_matcher({inject, regex, Name}, _Options) ->
 
 %% ---- Object
 
-generate_matcher({object, any}, _Options) ->
+generate_matcher({object, any}, _Options, _CB) ->
     fun({[]}, _Params) ->
             {true, []};
        ({[{_, _} | _]}, _Params) ->
@@ -98,9 +98,9 @@ generate_matcher({object, any}, _Options) ->
        (_, _Params) ->
             {false, []}
     end;
-generate_matcher({object, Conditions}, Options) ->
+generate_matcher({object, Conditions}, Options, CB) ->
     PairMatchers = lists:map(fun(C) ->
-                                     ejpet_generator:generate_matcher(C, Options, ?MODULE)
+                                     CB(C, Options, CB)
                              end, Conditions),
     fun({Items}, Params) when is_list(Items) ->
             R = [continue_until_match(Items, PairMatcher, Params) || PairMatcher <- PairMatchers],
@@ -119,23 +119,23 @@ generate_matcher({object, Conditions}, Options) ->
        (_, _Params) ->
             {false, []}
     end;
-generate_matcher({pair, any, ValMatcherDesc}, Options) ->
-    ValMatcher = ejpet_generator:generate_matcher(ValMatcherDesc, Options, ?MODULE),
+generate_matcher({pair, any, ValMatcherDesc}, Options, CB) ->
+    ValMatcher = CB(ValMatcherDesc, Options, CB),
     fun({_Key, Val}, Params) ->
             ValMatcher(Val, Params);
        (_, _Params) ->
             {false, []}
     end;
-generate_matcher({pair, KeyMatcherDesc, any}, Options) ->
-    KeyMatcher = generate_matcher(KeyMatcherDesc, Options),
+generate_matcher({pair, KeyMatcherDesc, any}, Options, CB) ->
+    KeyMatcher = generate_matcher(KeyMatcherDesc, Options, CB),
     fun({Key, _Val}, Params) ->
             KeyMatcher(Key, Params);
        (_, _Params) ->
             {false, []}
     end;
-generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}, Options) ->
-    KeyMatcher = generate_matcher(KeyMatcherDesc, Options),
-    ValMatcher = ejpet_generator:generate_matcher(ValMatcherDesc, Options, ?MODULE),
+generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}, Options, CB) ->
+    KeyMatcher = generate_matcher(KeyMatcherDesc, Options, CB),
+    ValMatcher = CB(ValMatcherDesc, Options, CB),
     fun({Key, Val}, Params) ->
             {S1, Cap1} = KeyMatcher(Key, Params),
             {S2, Cap2} = ValMatcher(Val, Params),
@@ -151,14 +151,14 @@ generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}, Options) ->
 
 %% ---- List
 
-generate_matcher({list, empty}, _Options) ->
+generate_matcher({list, empty}, _Options, _CB) ->
     fun([], _Params) ->
             {true, []};
        (_, _Params) ->
             {false, []}
     end;
 
-generate_matcher({list, any}, _Options) ->
+generate_matcher({list, any}, _Options, _CB) ->
     fun([], _Params) ->
             {true, []};
        ([_|_], _Params) ->
@@ -167,16 +167,16 @@ generate_matcher({list, any}, _Options) ->
             {false, []}
     end;
 
-generate_matcher({list, Conditions}, Options) ->
+generate_matcher({list, Conditions}, Options, CB) ->
     ItemMatchers = lists:map(fun({find, Expr}) ->
-                                     Matcher = ejpet_generator:generate_matcher(Expr, Options, ?MODULE),
+                                     Matcher = CB(Expr, Options, CB),
                                      fun(Items, Params) when is_list(Items) ->
                                              continue_until_match(Items, Matcher, Params);
                                         (_, _Params) ->
                                              {{false, []}, []}
                                      end;
                                 (Expr) ->
-                                     Matcher = ejpet_generator:generate_matcher(Expr, Options, ?MODULE),
+                                     Matcher = CB(Expr, Options, CB),
                                      fun([], Params) ->
                                              {Matcher([], Params), []};
                                         ([Head|Tail], Params) ->
@@ -207,7 +207,7 @@ generate_matcher({list, Conditions}, Options) ->
 
 %% ----- Iterable
 
-generate_matcher({iterable, any}, _Options) ->
+generate_matcher({iterable, any}, _Options, _CB) ->
     fun(What, _Params) when is_list(What) ->
             {true, []};
        ({_What}, _Params) ->
@@ -216,9 +216,9 @@ generate_matcher({iterable, any}, _Options) ->
             {false, []}
     end;
 
-generate_matcher({iterable, Conditions, Flags}, Options) ->
+generate_matcher({iterable, Conditions, Flags}, Options, CB) ->
     Matchers = lists:map(fun(C) ->
-                                 ejpet_generator:generate_matcher(C, Options, ?MODULE)
+                                 CB(C, Options, CB)
                          end, Conditions),
     DoMatch =
         fun(Items, Params) ->
@@ -246,9 +246,9 @@ generate_matcher({iterable, Conditions, Flags}, Options) ->
 
 %% ----- Descedant
 
-generate_matcher({descendant, Conditions, Flags}, Options) ->
+generate_matcher({descendant, Conditions, Flags}, Options, CB) ->
     Matchers = lists:map(fun(C) ->
-                                 ejpet_generator:generate_matcher(C, Options, ?MODULE)
+                                 CB(C, Options, CB)
                          end, Conditions),
     DoMatch =
         fun(Items, Params) ->
@@ -276,7 +276,7 @@ generate_matcher({descendant, Conditions, Flags}, Options) ->
 
 %% ---- Unit
 
-generate_matcher({string, BinString}, _Options) ->
+generate_matcher({string, BinString}, _Options, _CB) ->
     fun(What, _Params) ->
             case What of 
                 BinString ->
@@ -285,7 +285,7 @@ generate_matcher({string, BinString}, _Options) ->
                     {false, []}
             end
     end;
-generate_matcher({regex, BinString}, Options) ->
+generate_matcher({regex, BinString}, Options, _CB) ->
     %% TODO - move the production of MP into the parser, which will store a evaluation function
     %% instead of BinString. Compile options should be passed to the parser, and also the runtime options.
     %% 
@@ -303,7 +303,7 @@ generate_matcher({regex, BinString}, Options) ->
        (_, _Params) ->
             {false, []}
     end;
-generate_matcher({number, Number}, Options) ->
+generate_matcher({number, Number}, Options, _CB) ->
     case proplists:get_value(number_strict_match, Options) of 
         true ->
             fun(What, _Params) when is_number(What) ->
@@ -328,13 +328,13 @@ generate_matcher({number, Number}, Options) ->
                     {false, []}
             end
     end;
-generate_matcher(any, _Options) ->
+generate_matcher(any, _Options, _CB) ->
     fun(_, _Params) ->
             {true, []}
     end;
-generate_matcher(What, _Options) when What == true;
-                                      What == false;
-                                      What == null ->
+generate_matcher(What, _Options, _CB) when What == true;
+                                           What == false;
+                                           What == null ->
     fun(Item, _Params) ->
             case Item of
                 What ->
@@ -343,7 +343,7 @@ generate_matcher(What, _Options) when What == true;
                     {false, []}
             end
     end;
-generate_matcher(eol, _Options) ->
+generate_matcher(eol, _Options, _CB) ->
     fun([], _Params) ->
             {true, []};
        (_, _Params) ->
