@@ -404,26 +404,14 @@ deep_continue_until_value_match([], _Matcher, _Params, _Flags) ->
     {{false, []}, []};
 deep_continue_until_value_match(Iterable, Matcher, Params, true) ->
     {deep_continue_until_end_(Iterable, Matcher, Params), []};
-deep_continue_until_value_match([Item = {struct, _Val} | Tail], Matcher, Params, Flags) ->
+deep_continue_until_value_match([Item = {struct, Pairs} | Tail], Matcher, Params, Flags) ->
     case Matcher(Item, Params) of 
         R = {true, _} ->
             {R, Tail};
         _ ->
-            case Item of
-                {struct, Pairs} ->
-                    case deep_continue_until_value_match(Pairs, Matcher, Params, Flags) of 
-                        {R2 = {true, _}, _} ->
-                            {R2, Tail};
-                        _ ->
-                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
-                    end;
-                [_|_] ->
-                    case deep_continue_until_value_match(Item, Matcher, Params, Flags) of 
-                        {R2 = {true, _}, _} ->
-                            {R2, Tail};
-                        _ ->
-                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
-                    end;
+            case deep_continue_until_value_match(Pairs, Matcher, Params, Flags) of 
+                {R2 = {true, _}, _} ->
+                    {R2, Tail};
                 _ ->
                     deep_continue_until_value_match(Tail, Matcher, Params, Flags)
             end
@@ -443,7 +431,7 @@ deep_continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, Flags) ->
                     end;
                 [_|_] ->
                     case deep_continue_until_value_match(Val, Matcher, Params, Flags) of 
-                        {R2 = {true, []}, _R} ->
+                        {R2 = {true, _}, _R} ->
                             {R2, Tail};
                         _ ->
                             deep_continue_until_value_match(Tail, Matcher, Params, Flags)
