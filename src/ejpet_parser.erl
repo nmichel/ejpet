@@ -40,7 +40,7 @@ expr([star_slash | Tail]) ->
     {R, Expr} = pattern(Tail),
     case R of
         [slash_g | R2] ->
-            {R2, ?RESULT({iterable, [Expr], true})}; %% '*' '/' Expr '/g' is a syntactic suger for '<' Expr '/g' '>'
+            {R2, ?RESULT({iterable, [Expr], true})}; %% '*' '/' Expr '/g' is a syntactic suger for '<' Expr '>' '/g'
         _ ->
             {R, ?RESULT({iterable, [Expr], false})} %% '*' '/' Expr is a syntactic suger for '<' Expr '>'
     end;
@@ -139,13 +139,13 @@ expr_iterable_head(List) ->
     case R of
         [coma | _Tail] -> % Expr ',' Tail
             expr_iterable_tail(R, [Expr]);
-        [slash_g, close_angle_brace | Tail] -> % Expr '/g' '>'
+        [close_angle_brace, slash_g | Tail] -> % Expr '>' '/g'
             {Tail, ?RESULT({iterable, [Expr], true})};
         [close_angle_brace | Tail] -> % Expr '>'
             {Tail, ?RESULT({iterable, [Expr], false})}
     end.
 
-expr_iterable_tail([slash_g, close_angle_brace | Tail], Acc) -> % '/g' '>'
+expr_iterable_tail([close_angle_brace, slash_g | Tail], Acc) -> % '>' '/g'
     {Tail, ?RESULT({iterable, lists:reverse(Acc), true})};
 expr_iterable_tail([close_angle_brace | Tail], Acc) -> % '>'
     {Tail, ?RESULT({iterable, lists:reverse(Acc), false})};

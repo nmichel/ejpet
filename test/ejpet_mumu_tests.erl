@@ -295,7 +295,7 @@ mumu_test_() ->
         ]
     }]"/utf8>>,
     Tests = [
-             {<<"[*, {\"name\": #\"ARTE\", \"pids\": <{\"type\": #\"Audio\", \"number\": (?<number>_), \"language\": (?<lang>_)}/g>}, *]">>,
+             {<<"[*, {\"name\": #\"ARTE\", \"pids\": <{\"type\": #\"Audio\", \"number\": (?<number>_), \"language\": (?<lang>_)}>/g}, *]">>,
               [{MumuData,
                 {true,[{"number",[<<"730">>,<<"731">>,<<"732">>,<<"733">>]},
                        {"lang",

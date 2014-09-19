@@ -296,7 +296,105 @@ global_iterable_capture_test_() ->
               [{<<"[{\"codec\": \"audio\", \"lang\": \"fr\"}, {\"codec\": \"video\", \"lang\": \"en\"}, {\"codec\": \"foo\", \"lang\": \"it\"}]">>,
                 {true, [{"node", [<<"{\"codec\":\"audio\",\"lang\":\"fr\"}">>, <<"{\"codec\":\"video\",\"lang\":\"en\"}">>, <<"{\"codec\":\"foo\",\"lang\":\"it\"}">>]},
                         {"lang", [<<"\"fr\"">>, <<"\"en\"">>, <<"\"it\"">>]}]}}
-              ]}
+              ]},
+             {"[*, <42, #\"foo\">/g]",
+              [
+               {<<"[\"i\", [42, \"foo\"]]">>, {true, []}}
+               ,{<<"[\"i\", [\"barfoo\", 42]]">>, {true, []}}
+               ,{<<"[\"i\", [{}, \"barfoo\", \"whatever\", 42, \"neh\"]]">>, {true, []}}
+              ]},
+
+             %% ----- global shallow match
+             %%
+             %% check non capturing behaviour (must behave as non-global shallow matching)
+             %%
+             {"<42, \"foo\">/g",
+              [
+               {<<"[42, \"foo\"]">>, {true, []}}
+               ,{<<"[\"foo\", 42]">>, {true, []}} %% order does not matter
+               ,{<<"[\"foo\", \"42\"]">>, {false, []}} %% every conditions must be met
+               ,{<<"[\"header\", \"foo\", 34, 42]">>, {true, []}} %% non matching items do not matter
+               ,{<<"{\"header\": \"header value\", \"foo key\": \"foo\", \"thirtyfor\": 34, \"fortytwo\": 42}">>, {true, []}} %% works for list and object
+               ,{<<"{\"header\": \"header value\", \"foo key\": \"foo value\", \"thirtyfor\": 34, \"fortytwo\": 42}">>, {false, []}} %% every conditions must be matched
+              ]
+             },
+
+             %% check capturing behaviour
+             %%
+             {<<"<(?<forty2>42), \"foo\">/g">>,
+              [
+               {<<"[42, \"foo\"]">>, {true, [{"forty2", [<<"42">>]}]}} %% capture
+               ,{<<"[\"foo\", 42]">>, {true, [{"forty2", [<<"42">>]}]}} %% order does not matter
+               ,{<<"[42, \"foo\", 42]">>, {true, [{"forty2", [<<"42">>, <<"42">>]}]}} %% capture all matching items
+               ,{<<"{\"forty2\": 42, \"foo\": \"foo\", \"42\": 42}">>, {true, [{"forty2", [<<"42">>, <<"42">>]}]}} %% work for objects too
+              ]
+             },
+             {<<"<(?<foo>\"foo\"), (?<forty2>42)>/g">>,
+              [
+               {<<"[42, \"foo\"]">>, {true, [{"forty2", [<<"42">>]}, {"foo", [<<"\"foo\"">>]}]}} %% capture
+               ,{<<"[\"foo\", 42]">>, {true, [{"forty2", [<<"42">>]}, {"foo", [<<"\"foo\"">>]}]}} %% order does not matter
+               ,{<<"[42, \"foo\", 42]">>, {true, [{"forty2", [<<"42">>, <<"42">>]}, {"foo", [<<"\"foo\"">>]}]}} %% capture all matching items
+               ,{<<"{\"forty2\": 42, \"foo\": \"foo\", \"42\": 42}">>, {true, [{"forty2", [<<"42">>, <<"42">>]}, {"foo", [<<"\"foo\"">>]}]}} %% work for objects too
+              ]
+             },
+             
+             %% check shorten form
+             %%
+             {<<"*/(?<node>*/(?<val>_)/g)/g">>,
+              [
+               {<<"[1, 2, 3]">>, {false, []}}
+               ,{<<"[[1, 2, 3]]">>,
+                 {true, [{"node", [<<"[1,2,3]">>]},
+                         {"val", [<<"1">>, <<"2">>, <<"3">>]}]}}
+               ,{<<"{}">>, {false, []}}
+               ,{<<"[{}]">>, {false, []}}
+               ,{<<"[{\"a\":42}]">>, {true, [{"node", [<<"{\"a\":42}">>]},
+                                             {"val", [<<"42">>]}]}}
+               ,{<<"{\"a\":[]}">>, {false, []}}
+               ,{<<"{\"a\": [1, 2, 3], \"b\": [4, 5]}">>, {true, [{"val",[<<"1">>,<<"2">>,<<"3">>,<<"4">>,<<"5">>]},
+                                                                  {"node",[<<"[1,2,3]">>,<<"[4,5]">>]}]}}
+               ,{<<"[\"hello\", {\"a\": \"an a\", \"b\": \"a b\", \"c\": \"a c\"}, [1, 2, {\"3\":3}], \"world\"]">>,
+                 {true,[{"val", [<<"\"an a\"">>,<<"\"a b\"">>,<<"\"a c\"">>,<<"1">>,<<"2">>, <<"{\"3\":3}">>]},
+                        {"node", [<<"{\"a\":\"an a\",\"b\":\"a b\",\"c\":\"a c\"}">>,
+                                  <<"[1,2,{\"3\":3}]">>]}]}}
+              ]
+             },
+
+             %% ----- deep global match
+             %%
+             %% check capturing behaviour
+             %%
+             {<<"**/(?<forty2>42)/g">>,
+              [
+               {<<"[42, \"foo\"]">>, {true, [{"forty2", [<<"42">>]}]}} %% capture
+               ,{<<"[\"foo\", 42]">>, {true, [{"forty2", [<<"42">>]}]}} %% order does not matter
+               ,{<<"[42, \"foo\", 42]">>, {true, [{"forty2", [<<"42">>, <<"42">>]}]}} %% capture all matching items
+               ,{<<"{\"forty2\": 42, \"foo\": \"foo\", \"42\": 42}">>, {true, [{"forty2", [<<"42">>, <<"42">>]}]}} %% work for objects too
+               ,{<<"[42, 42, [42], {\"42\":42}, [{\"42\":[42]}]]">>,
+                 {true, [{"forty2", [<<"42">>, <<"42">>, <<"42">>, <<"42">>, <<"42">>]}]}}
+              ]
+             },
+             {<<"<**/(?<foo>#\"foo\")>/g">>,
+              [
+               {<<"[\"foo\"]">>, {false, []}} %% first level list cannot match
+               ,{<<"[[\"nehfoo\"]]">>, {true, [{"foo", [<<"\"nehfoo\"">>]}]}} %% nested list matches
+               ,{<<"[[[[\"foobar\"]]]]">>, {true, [{"foo", [<<"\"foobar\"">>]}]}} %% very nested list matches
+               ,{<<"{\"fookey\":\"foo\"}">>, {false, []}} %% first level object cannot match
+               ,{<<"[{\"fookey\":\"foo\"}]">>, {true, [{"foo", [<<"\"foo\"">>]}]}} %% nested object matches
+               ,{<<"[[{\"key\": [{\"fookey\":\"foo\"}]}]]">>, {true, [{"foo", [<<"\"foo\"">>]}]}} %% very nested object matches
+              ]
+             },
+             {<<"<(?<node>**/(?<foo>#\"foo\")/g)>/g">>,
+              [
+               {<<"[{\"deep\": [{\"whatever\": \"nehfoo\"}]},
+                    {\"a\":\"non-fOo\", \"fkey\": \"ifoo\"},
+                    {\"fookey\":\"foo\"}]">>, {true,[{"node", [<<"{\"deep\":[{\"whatever\":\"nehfoo\"}]}">>,
+                                                               <<"{\"a\":\"non-fOo\",\"fkey\":\"ifoo\"}">>,
+                                                               <<"{\"fookey\":\"foo\"}">>]},
+                                                     {"foo",[<<"\"nehfoo\"">>,<<"\"ifoo\"">>,<<"\"foo\"">>]}]} %% very nested object matches, and all matching items are captured
+               }
+              ]
+             }
             ],
     ejpet_test_helpers:generate_test_list(Tests).
 

@@ -133,8 +133,8 @@ Expression syntax
 | `[ item* (, *)?]` | list for which all item patterns are matched | Order DOES matter |
 | `< value* >` | value set (list, or object values) for which all value patterns are matched | Order does not matter 
 | `*/value` | syntactic sugar for `<value>` |  
-| `< value* /g>` | same as previous but search for ALL matches. Useful only when capturing | Order does not matter
-| `*/value/g` | syntactic sugar for `<value/g>` |  
+| `< value* >/g` | same as previous but search for ALL matches. Useful only when capturing | Order does not matter
+| `*/value/g` | syntactic sugar for `<value>/g` |  
 | `**/value` | deep search for first value matching the value pattern. |  
 | `**/value/g` | same as previous but search for ALL matches. Useful only when capturing |  
 | `(?<name>expr)` | capture expression `expr` in return value `name` | Every JSON expression may be captured
