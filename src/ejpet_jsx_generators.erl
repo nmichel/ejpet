@@ -284,7 +284,7 @@ generate_matcher({regex, BinString}, Options, _CB) ->
     %% instead of BinString. Compile options should be passed to the parser, and also the runtime options.
     %% 
     {ok, MP} = re:compile(BinString, Options),
-    fun(What, _Params) when is_list(What); is_binary(What) ->
+    fun(What, _Params) when is_binary(What) ->
             try re:run(What, MP) of 
                 {match, _} ->
                     {true, []};
