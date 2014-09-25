@@ -32,8 +32,12 @@ tokenize(<<$[, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [open_square_brace | Acc], Config);
 tokenize(<<$], T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [close_square_brace | Acc], Config);
+tokenize(<<$<, $!, T/binary>>, State = [state_root | _], Acc, Config) ->
+    tokenize(T, State, [open_angle_brace_bang | Acc], Config);
 tokenize(<<$<, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [open_angle_brace | Acc], Config);
+tokenize(<<$!, $>, T/binary>>, State = [state_root | _], Acc, Config) ->
+    tokenize(T, State, [close_angle_brace_bang | Acc], Config);
 tokenize(<<$>, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [close_angle_brace | Acc], Config);
 tokenize(<<$,, T/binary>>, State = [state_root | _], Acc, Config) ->
@@ -42,10 +46,6 @@ tokenize(<<$:, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [column | Acc], Config);
 tokenize(<<$_, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [underscore | Acc], Config);
-tokenize(<<$*, $*, $/, T/binary>>, State = [state_root | _], Acc, Config) ->
-    tokenize(T, State, [double_star_slash | Acc], Config);
-tokenize(<<$*, $/, T/binary>>, State = [state_root | _], Acc, Config) ->
-    tokenize(T, State, [star_slash | Acc], Config);
 tokenize(<<$*, T/binary>>, State = [state_root | _], Acc, Config) ->
     tokenize(T, State, [star | Acc], Config);
 tokenize(<<$(, T/binary>>, State = [state_root | _], Acc, Config) ->

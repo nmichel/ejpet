@@ -28,22 +28,6 @@ expr([Item = {string, _String} | Tail]) ->
     {Tail, ?RESULT(Item)};
 expr([Item = {regex, _String} | Tail]) ->
     {Tail, ?RESULT(Item)};
-expr([double_star_slash | Tail]) ->
-    {R, Expr} = pattern(Tail),
-    case R of
-        [slash_g | R2] ->
-            {R2, ?RESULT({descendant, [Expr], true})};
-        _ ->
-            {R, ?RESULT({descendant, [Expr], false})}
-    end;
-expr([star_slash | Tail]) ->
-    {R, Expr} = pattern(Tail),
-    case R of
-        [slash_g | R2] ->
-            {R2, ?RESULT({iterable, [Expr], true})}; %% '*' '/' Expr '/g' is a syntactic suger for '<' Expr '>' '/g'
-        _ ->
-            {R, ?RESULT({iterable, [Expr], false})} %% '*' '/' Expr is a syntactic suger for '<' Expr '>'
-    end;
 expr([underscore | Tail]) ->
     {Tail, ?RESULT(any)};
 expr([open_curvy_brace | Tail]) ->
@@ -52,6 +36,8 @@ expr([open_square_brace | Tail]) ->
     expr_list(Tail);
 expr([open_angle_brace | Tail]) ->
     expr_iterable(Tail);
+expr([open_angle_brace_bang | Tail]) ->
+    expr_descendant(Tail);
 expr([open_paren, {inject, Name}, Type, close_paren | Tail])
   when Type == string;
        Type == number;
@@ -152,4 +138,28 @@ expr_iterable_tail([close_angle_brace | Tail], Acc) -> % '>'
 expr_iterable_tail([coma | Tail], Acc) -> % ',' Expr Tail
     {R, Expr} = pattern(Tail),
     expr_iterable_tail(R, [Expr | Acc]).
+
+%% -----
+
+expr_descendant(List) ->
+    expr_descendant_head(List).
+
+expr_descendant_head(List) ->
+    {R, Expr} = pattern(List),
+    case R of
+        [coma | _Tail] -> % Expr ',' Tail
+            expr_descendant_tail(R, [Expr]);
+        [close_angle_brace_bang, slash_g | Tail] -> % Expr '>' '/g'
+            {Tail, ?RESULT({descendant, [Expr], true})};
+        [close_angle_brace_bang | Tail] -> % Expr '>'
+            {Tail, ?RESULT({descendant, [Expr], false})}
+    end.
+
+expr_descendant_tail([close_angle_brace_bang, slash_g | Tail], Acc) -> % '>' '/g'
+    {Tail, ?RESULT({descendant, lists:reverse(Acc), true})};
+expr_descendant_tail([close_angle_brace_bang | Tail], Acc) -> % '>'
+    {Tail, ?RESULT({descendant, lists:reverse(Acc), false})};
+expr_descendant_tail([coma | Tail], Acc) -> % ',' Expr Tail
+    {R, Expr} = pattern(Tail),
+    expr_descendant_tail(R, [Expr | Acc]).
 

@@ -110,7 +110,7 @@ iterable_test_() ->
                {<<"[1, \"foo\", {\"bar\": [42]}, 42]">>, {true, []}},
                {<<"{\"foo\": 42, \"neh\": {\"bar\": [42]}}">>, {true, []}}
               ]},
-             {"*/42",
+             {"<42>",
               [
                {<<"{\"foo\":42}">>, {true, []}},
                {<<"{\"bar\": {}, \"foo\": 42}">>, {true, []}},
@@ -147,7 +147,7 @@ iterable_test_() ->
 
 descendant_test_() ->
     Tests = [
-             {"**/42",
+             {"<!42!>",
               [
                {<<"[]">>, {false, []}},
                {<<"{}">>, {false, []}},
@@ -158,7 +158,7 @@ descendant_test_() ->
                {<<"[\"foo\", 42]">>, {true, []}},
                {<<"[[{\"bar\": [{\"foo\": [\"bar\", 42, 13]}]}]]">>, {true, []}}
               ]},
-             {"**/[*, 42]",
+             {"<![*, 42]!>",
               [
                {<<"[]">>, {false, []}},
                {<<"{}">>, {false, []}},
@@ -167,8 +167,38 @@ descendant_test_() ->
                {<<"{\"foo\" : [42]}">>, {true, []}},
                {<<"[[{\"bar\": [{\"foo\": [\"this one matches\", 42]}]}], \"next does not match\", 42]">>, {true, []}}
               ]},
-             {"**/{_:42}",
+             {"<!{_:42}!>",
               [{<<"[{\"bar\": 42}]">>, {true, []}}
+              ]},
+
+             {"<! 42, \"PI\" !>",
+              [
+               {<<"42">>, {false, []}}
+               ,{<<"\"PI\"">>, {false, []}}
+
+               ,{<<"[42]">>, {false, []}}
+               ,{<<"[\"PI\"]">>, {false, []}}
+               ,{<<"{\"k\": 42}">>, {false, []}}
+               ,{<<"{\"k\": \"PI\"}">>, {false, []}}
+
+               ,{<<"[42, \"PI\"]">>, {true, []}}
+               ,{<<"[\"PI\", 42]">>, {true, []}}
+               ,{<<"[\"spam\", \"PI\", \"spam\", 42, \"spam\"]">>, {true, []}}
+               ,{<<"[\"spam\", \"Pi\", \"spam\", 42, \"spam\"]">>, {false, []}}
+               ,{<<"{\"kpi\": \"PI\", \"k42\": 42}">>, {true, []}}
+               ,{<<"{\"k42\": 42, \"kpi\": \"PI\"}">>, {true, []}}
+               ,{<<"{\"k1\": \"spam\", \"k42\": 42, \"k2\": \"spam\", \"kpi\": \"PI\", \"k3\": \"spam\"}">>, {true, []}}
+               ,{<<"{\"k1\": \"spam\", \"k42\": 41, \"k2\": \"spam\", \"kpi\": \"PI\", \"k3\": \"spam\"}">>, {false, []}}
+
+               ,{<<"[\"spam\", [\"PI\"], \"spam\", {\"k42\": 42}, \"spam\"]">>, {true, []}}
+               ,{<<"{\"k1\": \"spam\", \"k42\": [42], \"k2\": \"spam\", \"kpi\": {\"kpi\": \"PI\"}, \"k3\": \"spam\"}">>, {true, []}}
+
+               ,{<<"[\"spam\", [\"spam\", \"PI\", \"spam\"], \"spam\", {\"kspan\": \"spam\", \"k42\": 42}, \"spam\"]">>, {true, []}}
+               ,{<<"{\"k1\": \"spam\", \"k42\": [42, \"spam\"], \"k2\": \"spam\", \"kpi\": {\"kpi\": \"PI\", \"kspam\": \"spam\"}, \"k3\": \"spam\"}">>, {true, []}}
+
+               ,{<<"[[[[[[[[[[42]]]], {\"k1\": [{\"k2\": {\"k3\": [1, 2, 3, [\"spam\", \"PI\"], 4, 5]}}]}]]]]]]">>, {true, []}}
+               ,{<<"[[[[[[[[[[41]]]], {\"k1\": [{\"k2\": {\"k3\": [1, 2, 3, [\"spam\", \"PI\"], 4, 5]}}]}]]]]]]">>, {false, []}}
+               ,{<<"[[[[[[[[[[42]]]], {\"k1\": [{\"k2\": {\"k3\": [1, 2, 3, [\"spam\", \"pI\"], 4, 5]}}]}]]]]]]">>, {false, []}}
               ]}
             ],
     ejpet_test_helpers:generate_test_list(Tests).
@@ -200,6 +230,27 @@ capture_test_() ->
               >
               ",
               [{<<"[1, 2, {\"foo\": 42, \"bar\": [{\"neh\": 42}]}, 41, 42]">>, {true, [{"found", [<<"{\"neh\":42}">>]}]}}
+              ]}
+            ],
+    ejpet_test_helpers:generate_test_list(Tests).
+
+descendant_capture_test_() ->
+    Tests = [
+             {"<! (?<cap42>{_:42}), 24 !>",
+              [
+               {<<"[{\"k1\": 42}, 24]">>, {true, [{"cap42", [<<"{\"k1\":42}">>]}]}}
+               ,{<<"[{\"k1\": 42}]">>, {false, []}}
+               ,{<<"[{\"uk1\": {\"uk1\": \"spam\", \"k1\": 42}}, [[[]], 24, {}]]">>, {true, [{"cap42", [<<"{\"uk1\":\"spam\",\"k1\":42}">>]}]}}
+               ,{<<"[{\"uk1\": {\"uk1\": \"spam\", \"k1\": 42, \"k24\": 24}}, [[[]], \"not 42\", {}]]">>, {true, [{"cap42", [<<"{\"uk1\":\"spam\",\"k1\":42,\"k24\":24}">>]}]}}
+              ]}
+             ,{"<! (?<cap42>{_:42}), (?<cap24>{_:24}) !>",
+              [
+               {<<"[{\"uk1\": {\"uk1\": \"spam\", \"k1\": 42, \"k24\": 24}}, [[[]], \"not 42\", {}]]">>, % Capture the same node
+                {true, [{"cap24", [<<"{\"uk1\":\"spam\",\"k1\":42,\"k24\":24}">>]},
+                        {"cap42", [<<"{\"uk1\":\"spam\",\"k1\":42,\"k24\":24}">>]}]}}
+               ,{<<"[{\"uk1\": {\"uk1\": \"spam\", \"k1\": 42, \"foo\": {\"k24\":24}}}, [[[]], \"not 42\", {}]]">>, % Captured nodes are different
+                 {true, [{"cap24", [<<"{\"k24\":24}">>]},
+                         {"cap42", [<<"{\"uk1\":\"spam\",\"k1\":42,\"foo\":{\"k24\":24}}">>]}]}}
               ]}
             ],
     ejpet_test_helpers:generate_test_list(Tests).
@@ -277,11 +328,11 @@ injection_and_capture_test_() ->
     {ok, MP1} = re:compile("^id_\\d+$"),
     {ok, MP2} = re:compile("^grp_\\d+$"),
     Tests = [
-             {"*/{\"sender\":(!<who>number),\"text\":(?<text>_)}",
+             {"<{\"sender\":(!<who>number),\"text\":(?<text>_)}>",
               [{<<"[{\"sender\":42,\"text\":\"foo\"}, {\"sender\":24,\"text\":\"bar\"}]">>, [{<<"who">>, 42}], {true, [{"text", [<<"\"foo\"">>]}]}},
                {<<"[{\"sender\":42,\"text\":\"foo\"}, {\"sender\":24,\"text\":\"bar\"}]">>, [{<<"who">>, 24}], {true, [{"text", [<<"\"bar\"">>]}]}}
               ]},
-             {"*/{\"sender\":(?<who>{\"name\":(!<from>regex)}),\"text\":(?<text>_)}",
+             {"<{\"sender\":(?<who>{\"name\":(!<from>regex)}),\"text\":(?<text>_)}>",
               [{<<"[{\"sender\":{\"name\": \"id_42\"},\"text\":\"foo\"}, {\"sender\":{\"name\": \"grp_42\"},\"text\":\"bar\"}]">>, [{<<"from">>, MP1}], {true, [{"text", [<<"\"foo\"">>]},
                                                                                                                                                                 {"who", [<<"{\"name\":\"id_42\"}">>]}]}},
                {<<"[{\"sender\":{\"name\": \"id_42\"},\"text\":\"foo\"}, {\"sender\":{\"name\": \"grp_42\"},\"text\":\"bar\"}]">>, [{<<"from">>, MP2}], {true, [{"text", [<<"\"bar\"">>]},
@@ -292,7 +343,7 @@ injection_and_capture_test_() ->
 
 global_iterable_capture_test_() ->
     Tests = [
-             {"*/(?<node>{\"codec\":_, \"lang\":(?<lang>_)})/g",
+             {"<(?<node>{\"codec\":_, \"lang\":(?<lang>_)})>/g",
               [{<<"[{\"codec\": \"audio\", \"lang\": \"fr\"}, {\"codec\": \"video\", \"lang\": \"en\"}, {\"codec\": \"foo\", \"lang\": \"it\"}]">>,
                 {true, [{"node", [<<"{\"codec\":\"audio\",\"lang\":\"fr\"}">>, <<"{\"codec\":\"video\",\"lang\":\"en\"}">>, <<"{\"codec\":\"foo\",\"lang\":\"it\"}">>]},
                         {"lang", [<<"\"fr\"">>, <<"\"en\"">>, <<"\"it\"">>]}]}}
@@ -337,10 +388,7 @@ global_iterable_capture_test_() ->
                ,{<<"{\"forty2\": 42, \"foo\": \"foo\", \"42\": 42}">>, {true, [{"forty2", [<<"42">>, <<"42">>]}, {"foo", [<<"\"foo\"">>]}]}} %% work for objects too
               ]
              },
-             
-             %% check shorten form
-             %%
-             {<<"*/(?<node>*/(?<val>_)/g)/g">>,
+             {<<"<(?<node><(?<val>_)>/g)>/g">>,
               [
                {<<"[1, 2, 3]">>, {false, []}}
                ,{<<"[[1, 2, 3]]">>,
@@ -364,7 +412,7 @@ global_iterable_capture_test_() ->
              %%
              %% check capturing behaviour
              %%
-             {<<"**/(?<forty2>42)/g">>,
+             {<<"<!(?<forty2>42)!>/g">>,
               [
                {<<"[42, \"foo\"]">>, {true, [{"forty2", [<<"42">>]}]}} %% capture
                ,{<<"[\"foo\", 42]">>, {true, [{"forty2", [<<"42">>]}]}} %% order does not matter
@@ -374,7 +422,7 @@ global_iterable_capture_test_() ->
                  {true, [{"forty2", [<<"42">>, <<"42">>, <<"42">>, <<"42">>, <<"42">>]}]}}
               ]
              },
-             {<<"<**/(?<foo>#\"foo\")>/g">>,
+             {<<"<<!(?<foo>#\"foo\")!>>/g">>,
               [
                {<<"[\"foo\"]">>, {false, []}} %% first level list cannot match
                ,{<<"[[\"nehfoo\"]]">>, {true, [{"foo", [<<"\"nehfoo\"">>]}]}} %% nested list matches
@@ -384,7 +432,7 @@ global_iterable_capture_test_() ->
                ,{<<"[[{\"key\": [{\"fookey\":\"foo\"}]}]]">>, {true, [{"foo", [<<"\"foo\"">>]}]}} %% very nested object matches
               ]
              },
-             {<<"<(?<node>**/(?<foo>#\"foo\")/g)>/g">>,
+             {<<"<(?<node><!(?<foo>#\"foo\")!>/g)>/g">>,
               [
                {<<"[{\"deep\": [{\"whatever\": \"nehfoo\"}]},
                     {\"a\":\"non-fOo\", \"fkey\": \"ifoo\"},
@@ -400,9 +448,13 @@ global_iterable_capture_test_() ->
 
 global_descendant_capture_test_() ->    
     Tests = [
-             {"**/(?<fortytwo>42)/g",
-              [{<<"[42, 42, [42], {\"42\":42}, [{\"42\":[42]}]]">>,
-                {true, [{"fortytwo", [<<"42">>, <<"42">>, <<"42">>, <<"42">>, <<"42">>]}]}}
+             {"<!(?<fortytwo>42)!>/g",
+              [{<<"42">>,
+                {false, []}},
+               {<<"[42, 42, [42], {\"42\":42}, [{\"42\":[42]}]]">>,
+                {true, [{"fortytwo", [<<"42">>, <<"42">>, <<"42">>, <<"42">>, <<"42">>]}]}},
+               {<<"{\"a\": 42, \"b\": [1, 2, [42, \"42\"], {\"aa\": 42}]}">>,
+                {true, [{"fortytwo", [<<"42">>, <<"42">>, <<"42">>]}]}}
               ]}
             ],
     ejpet_test_helpers:generate_test_list(Tests).

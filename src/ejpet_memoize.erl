@@ -21,10 +21,6 @@ build_key({string, String}) ->
     ?BS("s", ?STOB(String));
 build_key({regex, String}) ->
     ?BS("r", ?STOB(String));
-build_key({descendant, [{_AST, Hash}], true}) ->
-    ?BS("dg", Hash);
-build_key({descendant, [{_AST, Hash}], false}) ->
-    ?BS("d", Hash);
 build_key(any) ->
     <<"a">>;
 build_key({inject, Type, Name}) ->
@@ -54,7 +50,11 @@ build_key({iterable, any}) ->
 build_key({iterable, Acc, true}) ->
     ?BS("ig", fold_expr_list(Acc));
 build_key({iterable, Acc, false}) ->
-    ?BS("i", fold_expr_list(Acc)).
+    ?BS("i", fold_expr_list(Acc));
+build_key({descendant, Acc, true}) ->
+    ?BS("dg", fold_expr_list(Acc));
+build_key({descendant, Acc, false}) ->
+    ?BS("d", fold_expr_list(Acc)).
 
 fold_expr_list(Ks) ->
     lists:foldl(fun({_, HE}, A)->

@@ -132,11 +132,9 @@ Expression syntax
 | `{ kv* }` | object for which all kv (key/value) patterns are matched | Order does not matter |
 | `[ item* (, *)?]` | list for which all item patterns are matched | Order DOES matter |
 | `< value* >` | value set (list, or object values) for which all value patterns are matched | Order does not matter 
-| `*/value` | syntactic sugar for `<value>` |  
 | `< value* >/g` | same as previous but search for ALL matches. Useful only when capturing | Order does not matter
-| `*/value/g` | syntactic sugar for `<value>/g` |  
-| `**/value` | deep search for first value matching the value pattern. |  
-| `**/value/g` | same as previous but search for ALL matches. Useful only when capturing |  
+| `<! value* !>` | same as `< value* >` but search deep. |
+| `<! value* !>/g` | same as previous but search for ALL matches. Useful only when capturing |  
 | `(?<name>expr)` | capture expression `expr` in return value `name` | Every JSON expression may be captured
 | `(!<name>type)` | match json object of type `type` against parameter named `name`  |
 
@@ -328,21 +326,21 @@ ejpet:match(JSONText, Expr) -> match_res()
  ------------------|------------------------------------------|-------------------------------------|-----
 | `<42>` | `[42]`, `{"key": 42}` | `42`, `"42"` | `ejpet:match(<<"{\"key\": 42}">>, "<42>").` |
 | `<"42">` | `["42"]`, `{"bar": "42"}`, `[42, "42"]`, `["42", 42]` | `[42]`, `{"bar": 47}`, `{"foo": 42}` | `ejpet:match(<<"{\"bar\": \"42\"}">>, "<\"42\">").` |
-| `**/"42"` | `["42"]`, `[true, "42"]`, `["foo", ["42", true], {}]`, `[{}, {"foo": "42"}, true]`, `{"bar": "42"}`, `{"bar": {"foo": "42"}}` | `"42"`, `{"foo": 42}`, `[42]` | `ejpet:match(<<"[true, [null, {\"foo\": \"42\"}, \"bar\"], {}]">>, "**/\"42\"").` |
-| `**/**/"42"` | `[["42"]]`, `[{}, {"foo": "42"}, true]`, `{"bar": {"foo": "42"}}` | `["42"]`, `{"bar": "42"}` | `ejpet:match(<<"[{\"foo\":\"42\"}]">>, "**/**/\"42\"").` |
+| `<!"42"!>` | `["42"]`, `[true, "42"]`, `["foo", ["42", true], {}]`, `[{}, {"foo": "42"}, true]`, `{"bar": "42"}`, `{"bar": {"foo": "42"}}` | `"42"`, `{"foo": 42}`, `[42]` | `ejpet:match(<<"[true, [null, {\"foo\": \"42\"}, \"bar\"], {}]">>, "<!\"42\"!>").` |
+| `<!<!"42"!>!>` | `[["42"]]`, `[{}, {"foo": "42"}, true]`, `{"bar": {"foo": "42"}}` | `["42"]`, `{"bar": "42"}` | `ejpet:match(<<"[{\"foo\":\"42\"}]">>, "<!<!\"42\"!>!>").` |
 
 ## Captures
 
 | Expression | Test | Capture(s) | Code snippet |
 ---|---|---|----
-| `**/(?<subnode>{_:42})` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | subnode: `[{"foo":42,"bar":{}}]` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "**/(?<subnode>{_:42})").`
-| `(?<all>**/(?<subnode>{_:42}))` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | all: `[[{"foo":null},{"foo":42,"bar":{}}]]`,subnode: `[{"foo":42,"bar":{}}]` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all>**/(?<subnode>{_:42}))").`
+| `<!(?<subnode>{_:42})!>` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | subnode: `[{"foo":42,"bar":{}}]` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "<!(?<subnode>{_:42})!>").`
+| `(?<all><!(?<subnode>{_:42})!>)` | `[{"foo": null}, {"foo": 42, "bar": {}}]` | all: `[[{"foo":null},{"foo":42,"bar":{}}]]`,subnode: `[{"foo":42,"bar":{}}]` | `ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all><!(?<subnode>{_:42})!>)").`
 
 ## Global captures
 
 | Expression | Test | Capture(s) | Code snippet |
 ---|---|---|----
-|`*/(?<node>{\"codec\":_, \"lang\":(?<lang>_)})/g`|`[{"codec": "audio", "lang": "fr"}, {"codec": "video", "lang": "en"}, {"codec": "foo", "lang": "it"}]`|node: `[{"codec":"audio","lang":"fr"}, {"codec":"video","lang":"en"}, {"codec":"foo","lang":"it"}]` lang: `["fr", "en", "it"]`| `ejpet:match(<<"[{\"codec\": \"audio\", \"lang\": \"fr\"}, {\"codec\": \"video\", \"lang\": \"en\"}, {\"codec\": \"foo\", \"lang\": \"it\"}]">>, <<"*/(?<node>{\"codec\":_, \"lang\":(?<lang>_)})/g">>)`
+|`<(?<node>{\"codec\":_, \"lang\":(?<lang>_)})>/g`|`[{"codec": "audio", "lang": "fr"}, {"codec": "video", "lang": "en"}, {"codec": "foo", "lang": "it"}]`|node: `[{"codec":"audio","lang":"fr"}, {"codec":"video","lang":"en"}, {"codec":"foo","lang":"it"}]` lang: `["fr", "en", "it"]`| `ejpet:match(<<"[{\"codec\": \"audio\", \"lang\": \"fr\"}, {\"codec\":\"video\", \"lang\": \"en\"}, {\"codec\": \"foo\", \"lang\": \"it\"}]">>, <<"<(?<node>{\"codec\":_, \"lang\":(?<lang>_)})>/g">>)`
 
 ### Notes
 
@@ -352,7 +350,7 @@ The real captured values depends on the API function used, and may be:
 * serialized JSON nodes (as in the "Code snippet" column),
 
 ```erlang
-1> ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all>**/(?<subnode>{_:42}))").
+1> ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all><!(?<subnode>{_:42})!>)").
 {true,[{"all",
         [<<"[{\"foo\":null},{\"foo\":42,\"bar\":{}}]">>}],
        {"subnode",[<<"{\"foo\":42,\"bar\":{}}">>]}]}
@@ -361,14 +359,14 @@ The real captured values depends on the API function used, and may be:
 * (jsx | jiffy | mochijson2) JSON value, depending on the backend, for easier further processing.
 
 ```erlang
-1> JSX = ejpet:compile("(?<all>**/(?<subnode>{_:42}))", jsx, []).
+1> JSX = ejpet:compile("(?<all><!(?<subnode>{_:42})!>)", jsx, []).
 {ejpet,jsx,#Fun<ejpet_jsx_generators.19.98422695>}
 2> ejpet:run((ejpet:backend(JSX)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>), JSX).
 {true,[{"all",
         [[[{<<"foo">>,null}],[{<<"foo">>,42},{<<"bar">>,[{}]}]]]},
        {"subnode",[[{<<"foo">>,42},{<<"bar">>,[{}]}]]}]}
 
-39> Mochi = ejpet:compile("(?<all>**/(?<subnode>{_:42}))", mochijson2, []).
+39> Mochi = ejpet:compile("(?<all><!(?<subnode>{_:42})!>)", mochijson2, []).
 {ejpet,mochijson2,
        #Fun<ejpet_mochijson2_generators.19.110863078>}
 40> ejpet:run((ejpet:backend(Mochi)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>), Mochi).
@@ -383,4 +381,4 @@ The real captured values depends on the API function used, and may be:
 
 | Expression | Test | parameters | Capture(s) | Code snippet |
 ---|---|---|---|---
-| `*/(?<subnode>(!<what>number))` | `[41, 42, 43]` | `[{<<"what">>, 42}]` | subnode: `[42]` | `ejpet:match(<<"[41, 42, 43]">>, "*/(?<subnode>(!<what>number))", [], [{<<"what">>, 42}]).`
+| `<(?<subnode>(!<what>number))>` | `[41, 42, 43]` | `[{<<"what">>, 42}]` | subnode: `[42]` | `ejpet:match(<<"[41, 42, 43]">>, "<(?<subnode>(!<what>number))>", [], [{<<"what">>, 42}]).`
