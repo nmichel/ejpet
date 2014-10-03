@@ -82,36 +82,45 @@ expr_list([close_square_brace | Tail]) ->
     {Tail, ?RESULT({list, empty})};
 expr_list([star, close_square_brace | Tail]) ->
     {Tail, ?RESULT({list, any})};
+expr_list([star, coma | Tail]) ->
+    expr_list_tail(Tail, []);
 expr_list(List) ->
-    expr_list_head(List).
+    expr_list_head(List, []).
 
-expr_list_head([star, coma | List]) ->
-    {R, Expr} = pattern(List),
+expr_list_head(L, Acc) ->
+    {R, Expr} = pattern(L),
     case R of
-        [coma | _Tail] ->
-            expr_list_tail(R, [{find, Expr}]); % '*' ',' Expr Tail
-        [close_square_brace | Tail] -> % '*', ',', Expr, ']'
-            {Tail, ?RESULT({list, [{find, Expr}, ?RESULT(eol)]})} % strict : previous expression must match the end of list
-    end;
-expr_list_head(List) ->
-    {R, Expr} = pattern(List),
-    case R of
-        [coma | _Tail] -> % Expr ',' Tail
-            expr_list_tail(R, [Expr]);
-        [close_square_brace | Tail] -> % Expr ']'
-            {Tail, ?RESULT({list, [Expr, ?RESULT(eol)]})} % strict : previous expression must match the end of list
+        [close_square_brace | Tail] ->
+            {Tail, ?RESULT({list, lists:reverse([{eol, <<"eol">>}, Expr | Acc])})};
+        [coma, star, close_square_brace | Tail] ->
+            {Tail, ?RESULT({list, lists:reverse([Expr | Acc])})};
+        [coma, star, coma | Tail] ->
+            expr_list_tail(Tail, [Expr | Acc]);
+        [coma | Tail] ->
+            expr_list_head(Tail, [Expr | Acc])
     end.
 
-expr_list_tail([close_square_brace | Tail], Acc) -> % ']'
-    {Tail, ?RESULT({list, lists:reverse([{eol, <<"eol">>} | Acc])})}; % strict : previous expression must match the end of list
-expr_list_tail([coma, star, close_square_brace | Tail], Acc) -> % ',' '*' ']'  Tail
-    {Tail, ?RESULT({list, lists:reverse(Acc)})}; % loose : previous match may be followed by zero of more items
-expr_list_tail([coma, star, coma | Tail], Acc) -> % ',' '*' ',' Expr Tail
-    {R, Expr} = pattern(Tail),
-    expr_list_tail(R, [{find, Expr} | Acc]);
-expr_list_tail([coma | Tail], Acc) -> % ',' Expr Tail
-    {R, Expr} = pattern(Tail),
-    expr_list_tail(R, [Expr | Acc]).
+expr_list_tail(List, Acc) ->
+    {R, Exprs} = expr_list_span(List, []),
+    case R of 
+        [close_square_brace | Tail] ->
+            {Tail, ?RESULT({list, lists:reverse([{find, Exprs}| Acc])})};
+        [coma, star, close_square_brace | Tail] ->
+            {Tail, ?RESULT({list, lists:reverse([{find, Exprs}| Acc])})};
+        [coma, star, coma | Tail] ->
+            expr_list_tail(Tail, [{find, Exprs} | Acc])
+    end.
+
+expr_list_span(List, Acc) ->
+    {R, Expr} = pattern(List),
+    case R of
+        [close_square_brace | _] ->
+            {R, lists:reverse([{eol, <<"eol">>}, Expr | Acc])};
+        [coma, star | _] ->
+            {R, lists:reverse([Expr | Acc])};
+        [coma | Tail] ->
+            expr_list_span(Tail, [Expr | Acc])
+    end.
 
 %% -----
 

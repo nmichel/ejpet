@@ -43,6 +43,7 @@ list_test_() ->
     Tests = [
              {"[]",
               [{<<"[]">>, {true, []}},
+               {<<"true">>, {false, []}},
                {<<"[true]">>, {false, []}}
               ]},
              {"[*]",
@@ -61,14 +62,25 @@ list_test_() ->
                {<<"[false, true]">>, {false, []}},
                {<<"[42, true, false]">>, {false, []}},
                {<<"[true, false, 42]">>, {false, []}},
-               {<<"[true, true, false]">>, {false, []}}]},
-             {"[true, *, false]",
+               {<<"[true, true, false]">>, {false, []}}
+              ]}
+             ,{"[*, true]",
+               [{<<"[true]">>, {true, []}}
+               ,{<<"[false, true]">>, {true, []}}
+               ,{<<"[true, true]">>, {true, []}}
+               ,{<<"[42, false, true]">>, {true, []}}
+               ,{<<"[true, false, true]">>, {true, []}}
+               ,{<<"[true, false]">>, {false, []}}
+               ]}
+             ,{"[true, *, false]",
               [{<<"[true, false]">>, {true, []}},
                {<<"[false, true]">>, {false, []}},
                {<<"[true, 42, false]">>, {true, []}},
                {<<"[42, true, false]">>, {false, []}},
+               {<<"[42, true, false, \"foo\"]">>, {false, []}},
                {<<"[true, 42, \"foo\", false]">>, {true, []}},
-               {<<"[true, 42, false, \"foo\"]">>, {false, []}}]},
+               {<<"[true, 42, false, \"foo\"]">>, {false, []}},
+               {<<"[42, true, false, \"foo\"]">>, {false, []}}]},
              {"[*, [1, *, [*, 42, *]], *]",
               [{<<"[[1, [42]]]">>, {true, []}},
                {<<"[[1, []]]">>, {false, []}},
@@ -80,7 +92,19 @@ list_test_() ->
                {<<"[42, {\"foo\": [\"neh\", 42]}]">>, {true, []}},
                {<<"[42, {\"foo\": [42, \"neh\"]}]">>, {false, []}},
                {<<"[{\"foo\": [42]}, \"neh\"]">>, {false, []}}
-              ]}
+              ]},
+             {"[*, true, false, *, 42]",
+              [{<<"[true, false, 42]">>, {true, []}}
+               ,{<<"[true, true, true, false, 42]">>, {true, []}}
+               ,{<<"[true, false, 42, 42]">>, {true, []}}
+               ,{<<"[42, true, false, 42]">>, {true, []}}
+
+               ,{<<"[false, true, 42]">>, {false, []}}
+               ,{<<"[true, 42]">>, {false, []}}
+               ,{<<"[false, 42]">>, {false, []}}
+               ,{<<"[false, true]">>, {false, []}}
+               ,{<<"[true, \"foo\", false, 42]">>, {false, []}}
+               ]}
             ],
     ejpet_test_helpers:generate_test_list(Tests).
 
@@ -455,7 +479,22 @@ global_descendant_capture_test_() ->
                 {true, [{"fortytwo", [<<"42">>, <<"42">>, <<"42">>, <<"42">>, <<"42">>]}]}},
                {<<"{\"a\": 42, \"b\": [1, 2, [42, \"42\"], {\"aa\": 42}]}">>,
                 {true, [{"fortytwo", [<<"42">>, <<"42">>, <<"42">>]}]}}
-              ]}
+              ]},
+             {"<! (?<foo>#\"^foo\"), (?<bfoo>{_:[#\"foo\", *]}) !>/g",
+              [
+                {<<"[\"foo5\", {\"oui\": [\"foo6\"]}, {\"non\": [42, \"foo7\"]}]">>,
+                 {true, [{"bfoo", [<<"{\"oui\":[\"foo6\"]}">>]},
+                         {"foo", [<<"\"foo5\"">>, <<"\"foo6\"">>, <<"\"foo7\"">>]}]}}
+               ,{<<"[true, {\"t\": [\"pifoo\", \"foo1\"]}, \"foo2\", [\"foo3\", {\"f\": {\"f\": [\"foo4\"]}}, true], \"foo5\"]">>,
+                 {true, [{"bfoo", [<<"{\"t\":[\"pifoo\",\"foo1\"]}">>,
+                                   <<"{\"f\":[\"foo4\"]}">>]},
+                         {"foo", [<<"\"foo1\"">>, <<"\"foo2\"">>, <<"\"foo3\"">>, <<"\"foo4\"">>, <<"\"foo5\"">>]}]}}
+               ,{<<"[true, {\"t\": [\"pifoo\", \"foo1\"]}, \"foo2\", [\"foo3\", {\"f\": {\"f\": [\"foo4\"]}}, true], [\"foo5\", {\"non\": [42, \"foo6\"]}]]">>,
+                 {true, [{"bfoo", [<<"{\"t\":[\"pifoo\",\"foo1\"]}">>,
+                                   <<"{\"f\":[\"foo4\"]}">>]},
+                         {"foo", [<<"\"foo1\"">>, <<"\"foo2\"">>, <<"\"foo3\"">>, <<"\"foo4\"">>, <<"\"foo5\"">>, <<"\"foo6\"">>]}]}}
+              ]
+             }
             ],
     ejpet_test_helpers:generate_test_list(Tests).
 

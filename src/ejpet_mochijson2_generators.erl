@@ -163,10 +163,12 @@ generate_matcher({list, any}, _Options, _CB) ->
             {false, []}
     end;
 generate_matcher({list, Conditions}, Options, CB) ->
-    ItemMatchers = lists:map(fun({find, Expr}) ->
-                                     Matcher = CB(Expr, Options, CB),
+    ItemMatchers = lists:map(fun({find, Exprs}) ->
+                                     Matchers = lists:foldr(fun(Expr, Acc) ->
+                                                                [CB(Expr, Options, CB) | Acc]
+                                                            end, [], Exprs),
                                      fun(Items, Params) when is_list(Items) ->
-                                             continue_until_match(Items, Matcher, Params);
+                                             continue_until_span_match(Items, Matchers, Params);
                                         (_, _Params) ->
                                              {{false, []}, []}
                                      end;
@@ -348,6 +350,48 @@ generate_matcher(eol, _Options, _CB) ->
     end.
 
 %% -----
+
+check_span_match(What, [], _Params, Acc) ->
+    Captures =
+        lists:foldl(fun (Cap, CapAcc) ->
+                        ejpet_helpers:melt(CapAcc, Cap)
+                    end,
+                    [], Acc),
+    {{true, Captures}, What};
+check_span_match(What, [Matcher|Tail], Params, Acc) ->
+    case What of
+        [] ->
+            Stat = Matcher(What, Params),
+            case Stat of
+                {false, _} ->
+                    {Stat, What};
+                _ ->
+                    Captures =
+                        lists:foldl(fun (Cap, CapAcc) ->
+                                        ejpet_helpers:melt(CapAcc, Cap)
+                                    end,
+                                    [], Acc),
+                    {{true, Captures}, Tail}
+            end;
+        [E|Rest] ->
+            Stat = Matcher(E, Params),
+            case Stat of
+                {false, _} ->
+                    {Stat, Rest};
+                {true, Cap} ->
+                    check_span_match(Rest, Tail, Params, [Cap | Acc])
+            end
+    end.
+
+continue_until_span_match([], Matchers, Params) ->
+    check_span_match([], Matchers, Params, []);
+continue_until_span_match(What = [_ | Tail], Matchers, Params) ->
+    case check_span_match(What, Matchers, Params, []) of
+        R = {{true, _}, _} ->
+            R;
+        _ ->
+            continue_until_span_match(Tail, Matchers, Params)
+    end.
 
 continue_until_match([], Matcher, Params) ->
     {Matcher([], Params), []};
