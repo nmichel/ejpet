@@ -1,4 +1,5 @@
 -module(ejpet_app).
+-author('nicolas.michel.lava@gmail.com').
 
 -behaviour(application).
 

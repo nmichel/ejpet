@@ -1,4 +1,5 @@
 -module(ejpet_mochijson2_generators).
+-author('nicolas.michel.lava@gmail.com').
 
 -export([generate_matcher/3]).
 

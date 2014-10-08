@@ -1,4 +1,5 @@
 -module(ejpet_sup).
+-author('nicolas.michel.lava@gmail.com').
 
 -behaviour(supervisor).
 
