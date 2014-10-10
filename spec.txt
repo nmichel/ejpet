@@ -9,9 +9,8 @@ expr    -> "{" spaces "}"
          | "[" spaces "*" spaces "]"
          | "[" spaces item tail
          | "<" spaces ">"
-         | "<" spaces (pattern spaces (',' spaces pattern)*)? spaces ">"
-         | "**/" spaces pattern
-         | "*/" spaces pattern
+         | "<" spaces (pattern spaces (',' spaces pattern)*)? spaces ">" ("/g")?
+         | "<!" spaces (pattern spaces (',' spaces pattern)*)? spaces "!>" ("/g")?
          | "_"
          | "true"
          | "false"

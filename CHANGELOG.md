@@ -1,4 +1,4 @@
-# Master
+# 0.4.0
 
 ### Bug fix(es)
 * Fix generator for list matching : matching functions produced for patterns like ```'[*, 42, "foo"]'``` were flawed.
