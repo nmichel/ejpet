@@ -11,7 +11,7 @@ generate_matcher({capture, Pattern, Mode}, Options, CB) ->
     fun(JSON, Params) ->
             case Matcher(JSON, Params) of
                 {true, Captures} ->
-                    {true, ejpet_helpers:melt(Captures, [{Mode, [JSON]}])};
+                    {true, add_captures(Captures, Mode, [JSON])};
                 R ->
                     R
             end
@@ -25,77 +25,77 @@ generate_matcher({inject, boolean, Name}, _Options, _CB) ->
     fun(What, Params) when What == true; What == false ->
             case proplists:get_value(Name, Params) of 
                 What ->
-                    {true, []};
+                    {true, empty()};
                 _ ->
-                    {false, []}
+                    {false, empty()}
             end;
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({inject, string, Name}, _Options, _CB) ->
     fun(What, Params) when is_binary(What) ->
             case proplists:get_value(Name, Params) of 
                 What ->
-                    {true, []};
+                    {true, empty()};
                 _ ->
-                    {false, []}
+                    {false, empty()}
             end;
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({inject, number, Name}, Options, _CB) ->
     fun(What, Params) when is_number(What) ->
             case proplists:get_value(Name, Params) of 
                 undefined ->
-                    {false, []};
+                    {false, empty()};
                 Number ->
                     case proplists:get_value(number_strict_match, Options) of 
                         true ->
                             case What =:= Number of
                                 true ->
-                                    {true, []};
+                                    {true, empty()};
                                 _ ->
-                                    {false, []}
+                                    {false, empty()}
                             end;
                         _ ->
                             case What == Number of
                                 true ->
-                                    {true, []};
+                                    {true, empty()};
                                 _ ->
-                                    {false, []}
+                                    {false, empty()}
                             end
                     end
             end;
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({inject, regex, Name}, _Options, _CB) ->
     fun(What, Params) when is_binary(What) ->
             case proplists:get_value(Name, Params) of 
                 undefined ->
-                    {false, []};
+                    {false, empty()};
                 MP ->
                     try re:run(What, MP) of 
                         {match, _} ->
-                           {true, []};
+                           {true, empty()};
                         _ ->
-                           {false, []}
+                           {false, empty()}
                     catch
                         _:_ ->
-                           {false, []}
+                           {false, empty()}
                     end
             end;
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 
 %% ---- Object
 
 generate_matcher({object, any}, _Options, _CB) ->
     fun({struct, Pairs}, _Params) when is_list(Pairs) ->
-            {true, []};
+            {true, empty()};
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({object, Conditions}, Options, CB) ->
     PairMatchers = lists:map(fun(C) ->
@@ -105,32 +105,32 @@ generate_matcher({object, Conditions}, Options, CB) ->
             R = [continue_until_match(Items, PairMatcher, Params) || PairMatcher <- PairMatchers],
             {AccCaptures, AccFailedCount} = 
                 lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                    {Captures ++ CapAcc, FailedAcc};
+                                    {melt_captures(CapAcc, Captures), FailedAcc};
                                (_, {CapAcc, FailedAcc}) ->
                                     {CapAcc, FailedAcc + 1}
-                            end, {[], 0}, R),
+                            end, {empty(), 0}, R),
             case AccFailedCount of
                 0 ->
                     {true, AccCaptures};
                 _ ->
-                    {false, []}
+                    {false, empty()}
             end;
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({pair, any, ValMatcherDesc}, Options, CB) ->
     ValMatcher = CB(ValMatcherDesc, Options, CB),
     fun({_Key, Val}, Params) ->
             ValMatcher(Val, Params);
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({pair, KeyMatcherDesc, any}, Options, CB) ->
     KeyMatcher = generate_matcher(KeyMatcherDesc, Options, CB),
     fun({Key, _Val}, Params) ->
             KeyMatcher(Key, Params);
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}, Options, CB) ->
     KeyMatcher = generate_matcher(KeyMatcherDesc, Options, CB),
@@ -140,28 +140,28 @@ generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}, Options, CB) ->
             {S2, Cap2} = ValMatcher(Val, Params),
             case S1 and S2 of
                 true ->
-                    {true, Cap1 ++ Cap2};
+                    {true, melt_captures(Cap1, Cap2)};
                 _ ->
-                    {false, []}
+                    {false, empty()}
             end;
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 
 %% ---- List
 
 generate_matcher({list, empty}, _Options, _CB) ->
     fun([], _Params) ->
-            {true, []};
+            {true, empty()};
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 
 generate_matcher({list, any}, _Options, _CB) ->
     fun(Items, _Params) when is_list(Items) ->
-            {true, []};
+            {true, empty()};
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({list, Conditions}, Options, CB) ->
     ItemMatchers = lists:map(fun({find, Exprs}) ->
@@ -171,7 +171,7 @@ generate_matcher({list, Conditions}, Options, CB) ->
                                      fun(Items, Params) when is_list(Items) ->
                                              continue_until_span_match(Items, Matchers, Params);
                                         (_, _Params) ->
-                                             {{false, []}, []}
+                                             {{false, empty()}, []}
                                      end;
                                 (Expr) ->
                                      Matcher = CB(Expr, Options, CB),
@@ -180,7 +180,7 @@ generate_matcher({list, Conditions}, Options, CB) ->
                                         ([Head|Tail], Params) ->
                                              {Matcher(Head, Params), Tail};
                                         (_, _Params) ->
-                                             {{false, []}, []}
+                                             {{false, empty()}, []}
                                      end
                              end, Conditions),
     fun(Items, Params) ->
@@ -191,13 +191,13 @@ generate_matcher({list, Conditions}, Options, CB) ->
                             end, {[], Items}, ItemMatchers),
             Res = {FinalStatus, _AccCaptures} = 
                 lists:foldl(fun({S, Captures}, {Stat, Acc}) ->
-                                    {S and Stat, Captures ++ Acc}
-                            end, {true, []}, lists:reverse(Statuses)),
+                                    {S and Stat, melt_captures(Acc, Captures)}
+                            end, {true, empty()}, Statuses),
             case FinalStatus of
                 true ->
                     Res;
                 _ ->
-                    {false, []}
+                    {false, empty()}
             end
     end;
 
@@ -209,11 +209,11 @@ generate_matcher({iterable, any}, _Options, _CB) ->
     %% that it is an iterable.
     %% 
     fun({struct, _What}, _Params) ->
-            {true, []};
+            {true, empty()};
        (What, _Params) when is_list(What) ->
-            {true, []};
+            {true, empty()};
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 
 generate_matcher({iterable, Conditions, Flags}, Options, CB) ->
@@ -225,15 +225,15 @@ generate_matcher({iterable, Conditions, Flags}, Options, CB) ->
                 R = [continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
                 {AccCaptures, AccFailedCount} = 
                     lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                        {Captures ++ CapAcc, FailedAcc};
+                                        {melt_captures(CapAcc, Captures), FailedAcc};
                                    (_, {CapAcc, FailedAcc}) ->
                                         {CapAcc, FailedAcc + 1}
-                                end, {[], 0}, R),
+                                end, {empty(), 0}, R),
                 case AccFailedCount of
                     0 ->
                         {true, AccCaptures};
                     _ ->
-                        {false, []}
+                        {false, empty()}
                 end
            end,
     fun({struct, Items}, Params) when is_list(Items) ->
@@ -241,7 +241,7 @@ generate_matcher({iterable, Conditions, Flags}, Options, CB) ->
        (Items, Params) when is_list(Items) ->
             DoMatch(Items, Params);
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 
 %% ----- Descedant
@@ -255,15 +255,15 @@ generate_matcher({descendant, Conditions, Flags}, Options, CB) ->
                 R = [deep_continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
                 {AccCaptures, AccFailedCount} = 
                     lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                        {Captures ++ CapAcc, FailedAcc};
+                                        {melt_captures(CapAcc, Captures), FailedAcc};
                                    (_, {CapAcc, FailedAcc}) ->
                                         {CapAcc, FailedAcc + 1}
-                                end, {[], 0}, R),
+                                end, {empty(), 0}, R),
                 case AccFailedCount of
                     0 ->
                         {true, AccCaptures};
                     _ ->
-                        {false, []}
+                        {false, empty()}
                 end
         end,
     fun({struct, Items}, Params) when is_list(Items) ->
@@ -271,7 +271,7 @@ generate_matcher({descendant, Conditions, Flags}, Options, CB) ->
        (Items, Params) when is_list(Items) ->
             DoMatch(Items, Params);
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 
 %% ---- Unit
@@ -280,9 +280,9 @@ generate_matcher({string, BinString}, _Options, _CB) ->
     fun(What, _Params) ->
             case What of 
                 BinString ->
-                    {true, []};
-                (_) ->
-                    {false, []}
+                    {true, empty()};
+                _ ->
+                    {false, empty()}
             end
     end;
 generate_matcher({regex, BinString}, Options, _CB) ->
@@ -293,15 +293,15 @@ generate_matcher({regex, BinString}, Options, _CB) ->
     fun(What, _Params) when is_binary(What) ->
             try re:run(What, MP) of 
                 {match, _} ->
-                    {true, []};
+                    {true, empty()};
                 _ ->
-                    {false, []}
+                    {false, empty()}
             catch 
                 _:_ ->
-                    {false, []}
+                    {false, empty()}
             end;
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end;
 generate_matcher({number, Number}, Options, _CB) ->
     case proplists:get_value(number_strict_match, Options) of 
@@ -309,28 +309,28 @@ generate_matcher({number, Number}, Options, _CB) ->
             fun(What, _Params) when is_number(What) ->
                     case What of 
                         Number ->
-                            {true, []};
+                            {true, empty()};
                         _ ->
-                            {false, []}
+                            {false, empty()}
                     end;
                (_, _Params) ->
-                    {false, []}
+                    {false, empty()}
             end;
         _ ->
             fun(What, _Params) when is_number(What) ->
                     case What == Number of 
                         true ->
-                            {true, []};
+                            {true, empty()};
                         _ ->
-                            {false, []}
+                            {false, empty()}
                     end;
                (_, _Params) ->
-                    {false, []}
+                    {false, empty()}
             end
     end;
 generate_matcher(any, _Options, _CB) ->
     fun(_, _Params) ->
-            {true, []}
+            {true, empty()}
     end;
 generate_matcher(What, _Options, _CB) when What == true;
                                            What == false;
@@ -338,16 +338,16 @@ generate_matcher(What, _Options, _CB) when What == true;
     fun(Item, _Params) ->
             case Item of
                 What ->
-                    {true, []};
-                (_) ->
-                    {false, []}
+                    {true, empty()};
+                _ ->
+                    {false, empty()}
             end
     end;
 generate_matcher(eol, _Options, _CB) ->
     fun([], _Params) ->
-            {true, []};
+            {true, empty()};
        (_, _Params) ->
-            {false, []}
+            {false, empty()}
     end.
 
 %% -----
@@ -355,9 +355,9 @@ generate_matcher(eol, _Options, _CB) ->
 check_span_match(What, [], _Params, Acc) ->
     Captures =
         lists:foldl(fun (Cap, CapAcc) ->
-                        ejpet_helpers:melt(CapAcc, Cap)
+                        melt_captures(CapAcc, Cap)
                     end,
-                    [], Acc),
+                    empty(), Acc),
     {{true, Captures}, What};
 check_span_match(What, [Matcher|Tail], Params, Acc) ->
     case What of
@@ -366,12 +366,12 @@ check_span_match(What, [Matcher|Tail], Params, Acc) ->
             case Stat of
                 {false, _} ->
                     {Stat, What};
-                _ ->
+                {true, C} ->
                     Captures =
                         lists:foldl(fun (Cap, CapAcc) ->
-                                        ejpet_helpers:melt(CapAcc, Cap)
+                                        melt_captures(CapAcc, Cap)
                                     end,
-                                    [], Acc),
+                                    C, Acc),
                     {{true, Captures}, Tail}
             end;
         [E|Rest] ->
@@ -405,9 +405,9 @@ continue_until_match([Item | Tail], Matcher, Params) ->
     end.
 
 continue_until_value_match([], _Matcher, _Params, _Flags) ->
-    {{false, []}, []};
+    {{false, empty()}, []};
 continue_until_value_match(Iterable, Matcher, Params, true) ->
-    {continue_until_end_(Iterable, Matcher, Params), []};
+    {continue_until_end_(Iterable, Matcher, Params), empty()};
 continue_until_value_match([Item = {struct, _Val} | Tail], Matcher, Params, Flags) ->
     case Matcher(Item, Params) of 
         R = {true, _} ->
@@ -431,24 +431,24 @@ continue_until_value_match([Item | Tail], Matcher, Params, Flags) ->
     end.
 
 continue_until_end_(Iterable, Matcher, Params) ->
-    continue_until_end_(Iterable, Matcher, Params, {false, []}).
+    continue_until_end_(Iterable, Matcher, Params, {false, empty()}).
 
 continue_until_end_([], _Matcher, _Params, Acc) ->
     Acc;
 continue_until_end_([Item = {struct, _Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
-    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)});
+    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)});
 continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Val, Params),
-    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)});
+    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)});
 continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
-    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)}).
+    continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)}).
 
 deep_continue_until_value_match([], _Matcher, _Params, _Flags) ->
-    {{false, []}, []};
+    {{false, empty()}, []};
 deep_continue_until_value_match(Iterable, Matcher, Params, true) ->
-    {deep_continue_until_end_(Iterable, Matcher, Params), []};
+    {deep_continue_until_end_(Iterable, Matcher, Params), empty()};
 deep_continue_until_value_match([Item = {struct, Pairs} | Tail], Matcher, Params, Flags) ->
     case Matcher(Item, Params) of 
         R = {true, _} ->
@@ -511,13 +511,13 @@ deep_continue_until_value_match([Item | Tail], Matcher, Params, Flags) ->
     end.
 
 deep_continue_until_end_(Iterable, Matcher, Params) ->
-    deep_continue_until_end_(Iterable, Matcher, Params, {false, []}).
+    deep_continue_until_end_(Iterable, Matcher, Params, {false, empty()}).
 
 deep_continue_until_end_([], _Matcher, _Params, Acc) ->
     Acc;
 deep_continue_until_end_([Item = {struct, _Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
-    LocalAcc = {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)},
+    LocalAcc = {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)},
     case Item of
         {struct, Props} ->
             R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
@@ -530,7 +530,7 @@ deep_continue_until_end_([Item = {struct, _Val} | Tail], Matcher, Params, {AccSt
     end;
 deep_continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Val, Params),
-    LocalAcc = {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)},
+    LocalAcc = {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)},
     case Val of
         {struct, Props} ->
             R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
@@ -543,7 +543,7 @@ deep_continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccC
     end;
 deep_continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
-    LocalAcc = {LocalStatus or AccStatus, ejpet_helpers:melt(AccCaptures, LocalCaptures)},
+    LocalAcc = {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)},
     case Item of
         {struct, Props} ->
             R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
@@ -554,3 +554,13 @@ deep_continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures
         _ ->
             deep_continue_until_end_(Tail, Matcher, Params, LocalAcc)
     end.
+
+empty() ->
+    {struct, []}.
+
+melt_captures({struct, P1}, {struct, P2}) ->
+    {struct, ejpet_helpers:melt(P1, P2)}.
+
+add_captures({struct, Pairs}, Name, Values) ->
+    {struct, ejpet_helpers:melt([{Name, Values}], Pairs)}.
+

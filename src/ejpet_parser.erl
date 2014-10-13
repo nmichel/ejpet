@@ -12,7 +12,7 @@ pattern(Tokens = [open_paren, {inject, _} | _]) ->
     expr(Tokens);
 pattern([open_paren, {capture, Name} | Tail]) ->
     {[close_paren | R], Expr} = expr(Tail),
-    {R, ?RESULT({capture, Expr, Name})};
+    {R, ?RESULT({capture, Expr, unicode:characters_to_binary(Name, utf8, utf8)})};
 pattern(Tokens) ->
     expr(Tokens).
 

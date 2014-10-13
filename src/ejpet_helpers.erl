@@ -11,7 +11,7 @@ melt([], L) ->
 melt(L, []) ->
     L;
 melt(L1, L2) ->
-    melt_(L1, L2, []).
+    lists:reverse(melt_(L1, L2, [])).
 
 melt_([], List, Acc) ->
     List ++ Acc;
