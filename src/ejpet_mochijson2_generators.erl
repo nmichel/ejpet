@@ -515,19 +515,11 @@ deep_continue_until_end_(Iterable, Matcher, Params) ->
 
 deep_continue_until_end_([], _Matcher, _Params, Acc) ->
     Acc;
-deep_continue_until_end_([Item = {struct, _Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
+deep_continue_until_end_([Item = {struct, Props} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
     LocalAcc = {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)},
-    case Item of
-        {struct, Props} ->
-            R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
-            deep_continue_until_end_(Tail, Matcher, Params, R);
-        [_|_] ->
-            R = deep_continue_until_end_(Item, Matcher, Params, LocalAcc),
-            deep_continue_until_end_(Tail, Matcher, Params, R);
-        _ ->
-            deep_continue_until_end_(Tail, Matcher, Params, LocalAcc)
-    end;
+    R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
+    deep_continue_until_end_(Tail, Matcher, Params, R);
 deep_continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Val, Params),
     LocalAcc = {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)},
