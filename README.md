@@ -167,9 +167,9 @@ In parameter injection `type`may be
 
 ```erlang
 1> ejpet:match(<<"42.0">>, "42").
-{true, []}
+{true,<<"{}">>}
 2> ejpet:match(<<"42.0">>, "42", [{number_strict_match, true}]).
-{false, []}
+{false,<<"{}">>}
 ```
 
 ### Strings and Regex
@@ -180,11 +180,11 @@ They may contain escaping sequences, as in `"\\b"`, or `"\u00E9"`. When found in
 
 ```erlang
 3> ejpet:match(<<"\"\x{00E9}\""/utf8>>, <<"\"\\u00E9\""/utf8>>, [{string_apply_escape_sequence, true}]).
-{true,[]}
+{true,<<"{}">>}
 4> ejpet:match(<<"\"\x{00E9}\""/utf8>>, <<"\"\\u00E9\""/utf8>>, [{string_apply_escape_sequence, false}]).
-{false, []}
+{false,<<"{}">>}
 5> ejpet:match(<<"\"\\\\u00E9\""/utf8>>, <<"\"\\u00E9\""/utf8>>, [{string_apply_escape_sequence, false}]).
-{true, []}
+{true,<<"{}">>}
 ```
 
 Codepoint produced by evaluating an escape sequence of the form `\uABCD` is *NOT* checked. One can insert any codepoint, valid or not, in a string or regex.
@@ -192,9 +192,19 @@ Codepoint produced by evaluating an escape sequence of the form `\uABCD` is *NOT
 Captures
 ----
 
-Every pattern `p` can be captured by simply substituing it by `(?<variable_name>p)`. Captures are returned as pairs `{variable_name, Captures}`. `Captures`is the list of JSON terms matching the pattern.
+Every pattern `p` can be captured by simply substituing it by `(?<variable_name>p)`. Captures are returned as a JSON object, where each `variable_name` ìs a key, and the list if captures found for that variable is the value.
 
-Usually there is only one item in the list. Value set and deep search patterns can return bigger capture sets, when used with the `/g` modifier.
+This JSON object is build with repect to the backend indicated when compiling the pattern. 
+
+**Warning** : if there is no captures to return, the empty JSON object `{}` will be returned. But its actual form depends on the backend.
+
+* jsx: `[{}]`
+* jiffy: `{[]}`
+* mochijson: `{struct, []}`
+
+One may wonder why return captures as a encoded JSON object. There is 2 reasons :
+  1. captures objects are captured "as is" in the parsed document, i.e. in their encoded form. Using the backend encoding for the result is more coherent;
+  2. capture JSON object can itself be pattern matched.
 
 Parameters Injection
 ----
@@ -221,11 +231,9 @@ json_term() = jsx_term() | jiffy_term() | mochijson2_term()
 match_param = {match_param_name(), match_param_value()}
 match_param_name = binary()
 match_param_value = true | false | number | binary() | re::mp()
-match_res() = {match_stat(), [capture()]
+run_res() = {match_stat(), json_term()}
+match_res() = {match_stat(), json_src()}
 match_stat() = true | false
-capture() = {capture_name(), [capture_value()]}
-capture_name() = string()
-capture_value() = json_term() | binary()
 
 ejpet:decode(JSONText, Backend) -> json_term()
 
@@ -255,14 +263,14 @@ ejpet:backend(EPM) -> backend()
 
   EPM = epm()
 
-ejpet:run(JSONTerm, EPM, Params) -> match_res()
+ejpet:run(JSONTerm, EPM, Params) -> run_res()
 
   EPM = epm()
   JSONTerm = json_term()
   Params = [Param]
   Param = match_param()
 
-ejpet:run(JSONTerm, EPM) -> match_res()
+ejpet:run(JSONTerm, EPM) -> run_res()
 
   Same pas ejpet:run(JSONTerm, EPM, [])
 
@@ -342,21 +350,25 @@ ejpet:match(JSONText, Expr) -> match_res()
 ---|---|---|----
 |`<(?<node>{\"codec\":_, \"lang\":(?<lang>_)})>/g`|`[{"codec": "audio", "lang": "fr"}, {"codec": "video", "lang": "en"}, {"codec": "foo", "lang": "it"}]`|node: `[{"codec":"audio","lang":"fr"}, {"codec":"video","lang":"en"}, {"codec":"foo","lang":"it"}]` lang: `["fr", "en", "it"]`| `ejpet:match(<<"[{\"codec\": \"audio\", \"lang\": \"fr\"}, {\"codec\":\"video\", \"lang\": \"en\"}, {\"codec\": \"foo\", \"lang\": \"it\"}]">>, <<"<(?<node>{\"codec\":_, \"lang\":(?<lang>_)})>/g">>)`
 
-### Notes
+## Injections
 
-In the array above, captured values are expressed as "abstract JSON node", for illustration purpose.
-The real captured values depends on the API function used, and may be:
+| Expression | Test | parameters | Capture(s) | Code snippet |
+---|---|---|---|---
+| `<(?<subnode>(!<what>number))>` | `[41, 42, 43]` | `[{<<"what">>, 42}]` | subnode: `[42]` | `ejpet:match(<<"[41, 42, 43]">>, "<(?<subnode>(!<what>number))>", [], [{<<"what">>, 42}]).`
 
-* serialized JSON nodes (as in the "Code snippet" column),
+# Notes
+
+In arrays above, captured values are expressed as "abstract JSON node", for illustration purpose.
+As explained previously, actual capture result depends on the API function used, and may be:
+
+* serialized JSON nodes (as in the "Code snippet" column), with `ejpet:match()`
 
 ```erlang
 1> ejpet:match(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>, "(?<all><!(?<subnode>{_:42})!>)").
-{true,[{"all",
-        [<<"[{\"foo\":null},{\"foo\":42,\"bar\":{}}]">>}],
-       {"subnode",[<<"{\"foo\":42,\"bar\":{}}">>]}]}
+{true,<<"{\"all\":[[{\"foo\":null},{\"foo\":42,\"bar\":{}}]],\"subnode\":[{\"foo\":42,\"bar\":{}}]}">>}
 ```
 
-* (jsx | jiffy | mochijson2) JSON value, depending on the backend, for easier further processing.
+* (jsx | jiffy | mochijson2) JSON value, depending on the backend, for easier further processing, with `ejpet:run()`
 
 ```erlang
 1> JSX = ejpet:compile("(?<all><!(?<subnode>{_:42})!>)", jsx, []).
@@ -370,15 +382,10 @@ The real captured values depends on the API function used, and may be:
 {ejpet,mochijson2,
        #Fun<ejpet_mochijson2_generators.19.110863078>}
 40> ejpet:run((ejpet:backend(Mochi)):decode(<<"[{\"foo\": null}, {\"foo\": 42, \"bar\": {}}]">>), Mochi).
-{true,[{"all",
-        [[{struct,[{<<"foo">>,null}]},
-          {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]]},
-       {"subnode",
-        [{struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]}]}
+{true,{struct,[{<<"all">>,
+                [[{struct,[{<<"foo">>,null}]},
+                  {struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]]},
+               {<<"subnode">>,
+                [{struct,[{<<"foo">>,42},{<<"bar">>,{struct,[]}}]}]}]}}
 ```
 
-## Injections
-
-| Expression | Test | parameters | Capture(s) | Code snippet |
----|---|---|---|---
-| `<(?<subnode>(!<what>number))>` | `[41, 42, 43]` | `[{<<"what">>, 42}]` | subnode: `[42]` | `ejpet:match(<<"[41, 42, 43]">>, "<(?<subnode>(!<what>number))>", [], [{<<"what">>, 42}]).`
