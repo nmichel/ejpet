@@ -68,12 +68,8 @@ match(Subject, Pattern, Options, Params) when is_list(Subject) ->
     match(list_to_binary(Subject), Pattern, Options, Params);
 match(Subject, {ejpet, Backend, Fun}, _Options, Params) ->
     Node = decode(Subject, Backend),
-    case Fun(Node, Params) of
-        {true, CaptureList} ->
-            {true, [{Name, [encode(Capture, Backend) || Capture <- Captures]} || {Name, Captures} <- CaptureList]};
-        R ->
-            R
-    end;
+    {Status, Captures} = Fun(Node, Params),
+    {Status, encode(Captures, Backend)};
 match(Subject, Pattern, Options, Params) ->
     Opaque = compile(Pattern, ?DEFAULT_BACKEND, Options),
     match(Subject, Opaque, Options, Params).
