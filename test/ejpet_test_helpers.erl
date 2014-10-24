@@ -23,14 +23,9 @@ generate_test_list(TestDescs, Backend) ->
                           F = ejpet_generator:generate_matcher(AST, [], (ejpet:generator(Backend))),
 
                           BuildTest = fun(Node, Injected, Expected = {ExpStatus, _ExpCaptures}) ->
-                                              PatternPart = 
-                                                  if 
-                                                      is_binary(Pattern) ->
-                                                          unicode:characters_to_list(Pattern, utf8);
-                                                      true ->
-                                                          Pattern
-                                                  end,
-                                              TestName = PatternPart ++ " | " ++ binary_to_list(Node) ++ " | " ++ atom_to_list(ExpStatus),
+                                              PatternPart = unicode:characters_to_binary(Pattern, utf8, utf8),
+                                              StatusAsBin = list_to_binary(atom_to_list(ExpStatus)),
+                                              TestName = <<PatternPart/binary, " | ", Node/binary, " | ", StatusAsBin/binary>>,
                                               
                                               %% Execute the test
                                               %% 
