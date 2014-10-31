@@ -1,3 +1,9 @@
+# Master
+
+### Breaking change(s)
+
+* Captures are returned in backend's format for JSON objects.
+
 # 0.4.0
 
 ### Bug fix(es)
