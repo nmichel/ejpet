@@ -14,9 +14,9 @@ validation_test_() ->
     application:start(ssl),
     application:start(inets),
     
-    {ok, {_, _, Body}} = httpc:request("http://gist.githubusercontent.com/nmichel/8b0d6f194e89abb7281d/raw/ef6ece35c53486f410deb0e735948d01bcd0f56e/validation_tests.json"),
-%    {ok, Body} = file:read_file("/home/nmichel/projects/validation_tests.json.git/validation_tests.json"),
-    JSONTests = ?REF_BACKEND:decode(list_to_binary(Body)),
+    {ok, {_, _, Body}} = httpc:request(get, {"http://gist.githubusercontent.com/nmichel/8b0d6f194e89abb7281d/raw/ef6ece35c53486f410deb0e735948d01bcd0f56e/validation_tests.json", []}, [], [{body_format, binary}]),
+    %% {ok, Body} = file:read_file("/home/nmichel/projects/validation_tests.json.git/validation_tests.json"),
+    JSONTests = ?REF_BACKEND:decode(Body),
     lists:foldl(fun(Backend, Acc) ->
             generate_test_suite_for_backend(Backend, JSONTests) ++ Acc
     end, [], ?BACKENDS).
@@ -43,6 +43,14 @@ do_test(Name, Matcher, Node, Injected, ExpS, ExpC) ->
     NodeBackend = ejpet:decode(NodeText, ejpet:backend(Matcher)),
     {S, Caps} = ejpet:run(NodeBackend, Matcher, Injected),
     RealC = ejpet:decode(ejpet:encode(Caps, ejpet:backend(Matcher)), ?REF_BACKEND),
+
+    % ?debugFmt("-----", []),
+    % ?debugFmt("Name ~p", [unicode:characters_to_list(Name)]),
+    % ?debugFmt("Test ~p", [unicode:characters_to_list(NodeText)]),
+    % ?debugFmt("ExpC ~p", [ExpC]),
+    % ?debugFmt("RealC ~p", [RealC]),
+    % ?debugFmt("{~p, RealC} == {~p, ExpC} : ~p", [S, ExpS, {S, RealC} == {ExpS, ExpC}]),
+
     {<<Name/binary, $|, NodeText/binary>>, ?_test(?assert({S, RealC} == {ExpS, ExpC}))}.
 
 -endif.

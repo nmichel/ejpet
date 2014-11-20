@@ -1,5 +1,9 @@
 # Master
 
+### Bug fix(es)
+* mochijson backend did not return captures in the required order.
+* jsx backend was flawed when it came to match objects with pattern "[*]" (any list) : it shouldn't match but it did.
+
 ### Breaking change(s)
 
 * Captures are returned in backend's format for JSON objects.

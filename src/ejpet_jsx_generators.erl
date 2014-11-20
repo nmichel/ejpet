@@ -164,6 +164,8 @@ generate_matcher({list, any}, _Options, _CB) ->
             {true, empty()};
        ([{}], _Params) -> % jsx special form for empty object
             {false, empty()};
+       ([{_, _} |_], _Params) -> % jsx form for non empty object
+            {false, empty()};
        ([_|_], _Params) ->
             {true, empty()};
        (_, _Params) ->

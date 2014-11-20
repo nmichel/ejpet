@@ -192,7 +192,7 @@ generate_matcher({list, Conditions}, Options, CB) ->
             Res = {FinalStatus, _AccCaptures} = 
                 lists:foldl(fun({S, Captures}, {Stat, Acc}) ->
                                     {S and Stat, melt_captures(Acc, Captures)}
-                            end, {true, empty()}, Statuses),
+                            end, {true, empty()}, lists:reverse(Statuses)),
             case FinalStatus of
                 true ->
                     Res;
