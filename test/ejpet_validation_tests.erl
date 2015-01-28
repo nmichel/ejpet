@@ -14,7 +14,8 @@ validation_test_() ->
     application:start(ssl),
     application:start(inets),
     
-    {ok, {_, _, Body}} = httpc:request(get, {"http://gist.githubusercontent.com/nmichel/8b0d6f194e89abb7281d/raw/ef6ece35c53486f410deb0e735948d01bcd0f56e/validation_tests.json", []}, [], [{body_format, binary}]),
+    
+    {ok, {_, _, Body}} = httpc:request(get, {"https://gist.githubusercontent.com/nmichel/8b0d6f194e89abb7281d/raw/cbabb4fad5358540499ce5b399b04eecba6a210e/validation_tests.json", []}, [], [{body_format, binary}]),
     %% {ok, Body} = file:read_file("/home/nmichel/projects/validation_tests.json.git/validation_tests.json"),
     JSONTests = ?REF_BACKEND:decode(Body),
     lists:foldl(fun(Backend, Acc) ->
