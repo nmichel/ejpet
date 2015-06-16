@@ -6,7 +6,11 @@
          compile/1, compile/2, compile/3, compile/4,
          backend/1,
          run/2, run/3,
-         match/2, match/3, match/4]).
+         match/2, match/3, match/4,
+         get_status/1,
+         get_captures/1,
+         get_capture/2, get_capture/3,
+         empty_capture_set/0, empty_capture_set/1]).
 
 
 -define(DEFAULT_BACKEND, jsx).
@@ -73,3 +77,52 @@ match(Subject, {ejpet, Backend, Fun}, _Options, Params) ->
 match(Subject, Pattern, Options, Params) ->
     Opaque = compile(Pattern, ?DEFAULT_BACKEND, Options),
     match(Subject, Opaque, Options, Params).
+
+get_status({S, _Caps}) when S == true; S == false->
+    S.
+
+get_captures({_S, Caps}) ->
+    Caps.
+
+get_capture(R, Name) ->
+    get_capture(R, Name, ?DEFAULT_BACKEND).
+
+get_capture(R, Name, Backend) when is_list(Name) ->
+    get_capture(R, unicode:characters_to_binary(Name, utf8, utf8), Backend);
+get_capture({_S, Caps}, Name, Backend) ->
+    get_capture_any(Caps, Name, Backend).
+
+empty_capture_set() ->
+    empty_capture_set(?DEFAULT_BACKEND).
+
+empty_capture_set(jsx) ->
+    [{}];
+empty_capture_set(jiffy) ->
+    {[]};
+empty_capture_set(mochijson2) ->
+    {struct, []}.
+
+get_capture_any(Caps, Name, jsx) ->
+    get_capture_jsx(Caps, Name);
+get_capture_any(Caps, Name, jiffy) ->
+    get_capture_jiffy(Caps, Name);
+get_capture_any(Caps, Name, mochijson2) ->
+    get_capture_mochijson2(Caps, Name);
+get_capture_any(Caps, Name, JPM) ->
+    get_capture_any(Caps, Name, ejpet:backend(JPM)).
+
+get_capture_jsx(Caps, Name) ->
+    get_capture_kv(Caps, Name).
+
+get_capture_jiffy({Caps}, Name) ->
+    get_capture_kv(Caps, Name).
+    
+get_capture_mochijson2({struct, Caps}, Name) ->
+    get_capture_kv(Caps, Name).
+
+get_capture_kv([], _Name) ->
+    not_found;
+get_capture_kv([{Name, Values} | _], Name) ->
+    {ok, Values};
+get_capture_kv([{_N, _V} | Tail], Name) ->
+    get_capture_kv(Tail, Name).

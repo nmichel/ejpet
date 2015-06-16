@@ -4,7 +4,6 @@
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
 
-
 capture_test_() ->
     Tests = [
              {"(?<var1>42)",

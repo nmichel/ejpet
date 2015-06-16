@@ -289,6 +289,32 @@ ejpet:match(JSONText, Expr, Options) -> match_res()
 ejpet:match(JSONText, Expr) -> match_res()
 
   Same as ejpet:match(JSONText, Expr, [], [])
+  
+ejpet:get_status(Res) -> match_stat()
+
+  Res = run_res()
+
+get_captures(Res) -> json_term()
+
+  Res = run_res()
+  
+get_capture(Res, Name) -> {ok, json_term()} | not_found
+
+  Same as get_captures(Res, Name, jsx)
+
+get_capture(Res, Name, Backend) ->  {ok, json_term()} | not_found
+
+  Res = run_res()
+  Name = string() | binary()
+  Backend = backend()
+
+empty_capture_set() -> json_term()
+
+  Same as empty_capture_set(jsx)
+  
+empty_capture_set(Backend) -> json_term()
+
+  Backend = backend()
 ```
 
 # Examples

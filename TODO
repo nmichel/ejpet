@@ -1,4 +1,16 @@
+* 2015-03-13 - decoding continuation
+    ejpet:decode/2 must return (either/or)
+        {:cont, contFn} (or contState, in which case we need a decode/3)
+        node
+* 2015-03-12 - match key with regex
+    e.g. {#"^foo$": _}
+* 2015-03-12 - add basic types matcher : number, string, boolean
+    e.g. {"foo": string}
+    e.g. {"foo": number}
+    e.g. {"foo": boolean}
+* 2015-03-12 - add value matchers : in(), gt(), gte(), lt(), lte() [useful ?]
 * 2013-12-16 - memoization.
 * 2013-12-13 - inject key value.
 * 2013-12-12 - inject arbitrary match-tree (where it is legal to do it).
 * 2013-12-05 - capture key value.
+    e.g. {(?<key>#"^foo$"): _}
