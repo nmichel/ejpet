@@ -7,7 +7,7 @@
 ### Breaking change(s)
 
 * Captures are returned in backend's format for JSON objects.
-* Captures order may differ because of the fix done in mochijson backend.
+* Captures order may differ because of the fix done in backends.
 
 ### New feature(s)
 * Add helper functions to manipulate result of the capturing process:
@@ -15,6 +15,7 @@
     * ```ejpet:get_captures/1```
     * ```ejpet:get_capture/2```, ```ejpet:get_capture/3```
     * ```ejpet:empty_capture_set/0```, ```ejpet:empty_capture_set/1```
+* Add types and functions specifications in module ```ejpet```.
 
 # 0.4.0
 

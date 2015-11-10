@@ -222,21 +222,24 @@ Note that `string` values should be binaries, and `regex` values MUST be `mp()` 
 backend() = jsx | jiffy | mochijson2
 epm() = {ejpet, term(), term()}
 expr_src() = string()
-compile_option() = {number_strict_match, (true|false)}
-  | {string_apply_escape_sequence, (true | false)}
+compile_option() = {string_apply_escape_sequence, boolean()}
+                 | {number_strict_match, boolean()}
 
+json_input() = string() | binary()
 json_src() = binary()
 json_term() = jsx_term() | jiffy_term() | mochijson2_term()
 
-match_param = {match_param_name(), match_param_value()}
-match_param_name = binary()
-match_param_value = true | false | number | binary() | re::mp()
+run_param_name = binary()
+run_param_value = boolean() | number() | binary() | re::mp()
+run_param = {run_param_name(), run_param_value()}                                                                                                                                                                  
+
 run_res() = {match_stat(), json_term()}
 match_res() = {match_stat(), json_src()}
 match_stat() = true | false
 
 ejpet:decode(JSONText, Backend) -> json_term()
 
+  JSONText = json_input()
   Backend = backend()
 
 ejpet:encode(JSONTerm, Backend) -> json_term()
@@ -268,7 +271,7 @@ ejpet:run(JSONTerm, EPM, Params) -> run_res()
   EPM = epm()
   JSONTerm = json_term()
   Params = [Param]
-  Param = match_param()
+  Param = run_param()
 
 ejpet:run(JSONTerm, EPM) -> run_res()
 
@@ -276,11 +279,12 @@ ejpet:run(JSONTerm, EPM) -> run_res()
 
 ejpet:match(JSONText, Expr, Options, Params) -> match_res()
 
+  JSONText = json_input()
   Expr = expr_src() | epm()
   Options = [Option]
   Option = compile_option()
   Params = [Param]
-  Param = match_param()
+  Param = run_param()
 
 ejpet:match(JSONText, Expr, Options) -> match_res()
 
@@ -292,11 +296,11 @@ ejpet:match(JSONText, Expr) -> match_res()
   
 ejpet:get_status(Res) -> match_stat()
 
-  Res = run_res()
+  Res = run_res() | match_res()
 
 get_captures(Res) -> json_term()
 
-  Res = run_res()
+  Res = run_res() | match_res()
   
 get_capture(Res, Name) -> {ok, json_term()} | not_found
 
