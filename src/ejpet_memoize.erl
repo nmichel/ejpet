@@ -45,6 +45,8 @@ build_key(eol) ->
     <<"e">>;
 build_key({list, Acc}) ->
     ?BS("l", fold_list_expr_list(Acc));
+build_key({list, Acc, eol}) ->
+    ?BB(build_key({list, Acc}), build_key(eol));
 build_key({iterable, any}) ->
     <<"ia">>;
 build_key({iterable, Acc, true}) ->

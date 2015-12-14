@@ -1,6 +1,7 @@
 # Master
 
 ### Bug fix(es)
+* Empty list [] used to match pattern "[_]". Shouldn't. (#5)
 * mochijson backend did not return captures in the required order.
 * jsx backend was flawed when it came to match objects with pattern "[*]" (any list) : it shouldn't match but it did.
 
@@ -15,7 +16,7 @@
     * ```ejpet:get_captures/1```
     * ```ejpet:get_capture/2```, ```ejpet:get_capture/3```
     * ```ejpet:empty_capture_set/0```, ```ejpet:empty_capture_set/1```
-* Add types and functions specifications in module ```ejpet```.
+* Add types and functions specifications in module ```ejpet```. (#3)
 
 # 0.4.0
 

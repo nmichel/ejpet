@@ -172,12 +172,20 @@ generate_matcher({list, any}, _Options, _CB) ->
             {false, empty()}
     end;
 
+generate_matcher({list, Conditions, eol}, Options, CB) ->
+    generate_matcher({list, Conditions, true}, Options, CB);
 generate_matcher({list, Conditions}, Options, CB) ->
+    generate_matcher({list, Conditions, false}, Options, CB);
+generate_matcher({list, Conditions, Eol}, Options, CB) ->
     ItemMatchers = lists:map(fun({find, Exprs}) ->
                                      Matchers = lists:foldr(fun(Expr, Acc) ->
                                                                 [CB(Expr, Options, CB) | Acc]
                                                             end, [], Exprs),
                                      fun([{}], _Params) -> % jsx special form for empty object
+                                             {{false, empty()}, []};
+                                        ([{_, _} | _], _Params) -> %% jsx special form for non empty object
+                                             {{false, empty()}, []};
+                                        ([], _Params) -> %% cannot find anything in an empty list
                                              {{false, empty()}, []};
                                         (Items, Params) when is_list(Items) ->
                                              continue_until_span_match(Items, Matchers, Params);
@@ -188,14 +196,16 @@ generate_matcher({list, Conditions}, Options, CB) ->
                                      Matcher = CB(Expr, Options, CB),
                                      fun([{}], _Params) -> % jsx special form for empty object
                                              {{false, empty()}, []};
-                                        ([], Params) ->
-                                             {Matcher([], Params), []};
+                                        ([{_, _} | _], _Params) -> %% jsx special form for non empty object
+                                             {{false, empty()}, []};
+                                        ([], _Params) -> %% cannot match anything in an empty list
+                                             {{false, empty()}, []};
                                         ([Head|Tail], Params) ->
                                              {Matcher(Head, Params), Tail}
                                      end
                              end, Conditions),
     fun(Items, Params) when is_list(Items) ->
-            {Statuses, _Tail} =
+            {Statuses, Tail} =
                 lists:foldl(fun(Matcher, {Acc, ItemList})->
                                     {S, R} = Matcher(ItemList, Params),
                                     {[S | Acc], R}
@@ -206,8 +216,18 @@ generate_matcher({list, Conditions}, Options, CB) ->
                             end, {true, empty()}, lists:reverse(Statuses)),
             case FinalStatus of
                 true ->
-                    Res;
-                _ ->
+                    case Eol of
+                        false ->
+                            Res;
+                        true ->
+                            case Tail of 
+                                [] ->
+                                    Res;
+                                [_|_] ->
+                                    {false, empty()}
+                            end
+                    end;
+                false ->
                     {false, empty()}
             end;
        (_, _Params) ->

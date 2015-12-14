@@ -91,7 +91,7 @@ expr_list_head(L, Acc) ->
     {R, Expr} = pattern(L),
     case R of
         [close_square_brace | Tail] ->
-            {Tail, ?RESULT({list, lists:reverse([{eol, <<"eol">>}, Expr | Acc])})};
+            {Tail, ?RESULT({list, lists:reverse([Expr | Acc]), eol})};
         [coma, star, close_square_brace | Tail] ->
             {Tail, ?RESULT({list, lists:reverse([Expr | Acc])})};
         [coma, star, coma | Tail] ->

@@ -1,0 +1,22 @@
+T = ejpet_scanner:tokenize("[*, true]", []).
+{_, AST} = ejpet_parser:parse(T).
+F = ejpet_generator:generate_matcher(AST, [], ejpet:generator(jsx)).
+EPM = {ejpet, jsx, F}.
+
+N = ejpet:decode("[true, false, true]", jsx).
+{true, [{}]} = ejpet:run(N, EPM).
+f(N).
+
+N = ejpet:decode("[true]", jsx).
+{true, [{}]} = ejpet:run(N, EPM).
+f(N).
+
+{true, [{}]} = ejpet:run(ejpet:decode("[false, true]", jsx), EPM).
+{false, [{}]} = ejpet:run(ejpet:decode("[true, false]", jsx), EPM).
+
+f(T).
+f(AST).
+f(F).
+f(EPM).
+
+
