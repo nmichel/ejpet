@@ -180,16 +180,8 @@ generate_matcher({span, Exprs, Strict}, Options, CB) ->
     Matchers = lists:foldr(fun(Expr, Acc) ->
                                [CB(Expr, Options, CB) | Acc]
                            end, [], Exprs),
-    fun([{}], _Params) -> % jsx special form for empty object
-            {{false, empty()}, []};
-       ([{_, _} | _], _Params) -> %% jsx special form for non empty object
-            {{false, empty()}, []};
-       ([], _Params) -> %% cannot match anything in an empty list
-            {{false, empty()}, []};
-       (Span, Params) when is_list(Span) ->
-            check_span_match(Span, Matchers, Params, [], Strict);
-       (_, _Params) ->
-            {{false, empty()}, []}
+    fun(Span, Params) when is_list(Span) ->
+        check_span_match(Span, Matchers, Params, [], Strict)
     end;
 
 generate_matcher({find, {{span, Exprs}, _}}, Options, CB) ->
@@ -200,23 +192,21 @@ generate_matcher({find, {span, Exprs, Strict}}, Options, CB) ->
     Matchers = lists:foldr(fun(Expr, Acc) ->
                                [CB(Expr, Options, CB) | Acc]
                            end, [], Exprs),
-    fun([{}], _Params) -> % jsx special form for empty object
-            {{false, empty()}, []};
-       ([{_, _} | _], _Params) -> %% jsx special form for non empty object
-            {{false, empty()}, []};
-       ([], _Params) -> %% cannot find anything in an empty list
-            {{false, empty()}, []};
-       (Span, Params) when is_list(Span) ->
-            continue_until_span_match(Span, Matchers, Params, Strict);
-       (_, _Params) ->
-            {{false, empty()}, []}
+    fun(Span, Params) ->
+        continue_until_span_match(Span, Matchers, Params, Strict)
     end;
     
 generate_matcher({list, Conditions}, Options, CB) ->
     ItemMatchers = lists:map(fun(Expr) ->
                                  CB(Expr, Options, CB)
                              end, Conditions),
-    fun(Items, Params) when is_list(Items) ->
+    fun([{}], _Params) -> % jsx special form for empty object
+            {false, empty()};
+       ([{_, _} | _], _Params) -> %% jsx special form for non empty object
+            {false, empty()};
+       ([], _Params) -> %% cannot match anything in an empty list
+            {false, empty()};
+       (Items, Params) when is_list(Items) ->
             {Statuses, _Tail} =
                 lists:foldl(fun(Matcher, {Acc, ItemList})->
                                     {S, R} = Matcher(ItemList, Params),
