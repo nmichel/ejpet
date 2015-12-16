@@ -85,39 +85,35 @@ expr_list([star, close_square_brace | Tail]) ->
 expr_list([star, coma | Tail]) ->
     expr_list_tail(Tail, []);
 expr_list(List) ->
-    expr_list_head(List, []).
+    expr_list_head(List).
 
-expr_list_head(L, Acc) ->
-    {R, Expr} = pattern(L),
+expr_list_head(L) ->
+    {R, Expr} = expr_list_span(L, []),
     case R of
         [close_square_brace | Tail] ->
-            {Tail, ?RESULT({list, lists:reverse([Expr | Acc]), eol})};
-        [coma, star, close_square_brace | Tail] ->
-            {Tail, ?RESULT({list, lists:reverse([Expr | Acc])})};
-        [coma, star, coma | Tail] ->
-            expr_list_tail(Tail, [Expr | Acc]);
-        [coma | Tail] ->
-            expr_list_head(Tail, [Expr | Acc])
+            {Tail, ?RESULT({list, lists:reverse([Expr])})};
+        Tail ->
+            expr_list_tail(Tail, [Expr])
     end.
 
 expr_list_tail(List, Acc) ->
-    {R, Exprs} = expr_list_span(List, []),
+    {R, Expr} = expr_list_span(List, []),
     case R of 
         [close_square_brace | Tail] ->
-            {Tail, ?RESULT({list, lists:reverse([{find, Exprs}| Acc])})};
-        [coma, star, close_square_brace | Tail] ->
-            {Tail, ?RESULT({list, lists:reverse([{find, Exprs}| Acc])})};
-        [coma, star, coma | Tail] ->
-            expr_list_tail(Tail, [{find, Exprs} | Acc])
+            {Tail, ?RESULT({list, lists:reverse([?RESULT({find, Expr}) | Acc])})};
+        Tail ->
+            expr_list_tail(Tail, [?RESULT({find, Expr}) | Acc])
     end.
 
-expr_list_span(List, Acc) ->
-    {R, Expr} = pattern(List),
+expr_list_span(L, Acc) ->
+    {R, Expr} = pattern(L),
     case R of
         [close_square_brace | _] ->
-            {R, lists:reverse([{eol, <<"eol">>}, Expr | Acc])};
-        [coma, star | _] ->
-            {R, lists:reverse([Expr | Acc])};
+            {R, ?RESULT({span, lists:reverse([Expr | Acc]), eol})};
+        [coma, star, close_square_brace | Tail] ->
+            {[close_square_brace | Tail], ?RESULT({span, lists:reverse([Expr | Acc])})};
+        [coma, star, coma | Tail] ->
+            {Tail, ?RESULT({span, lists:reverse([Expr | Acc])})};
         [coma | Tail] ->
             expr_list_span(Tail, [Expr | Acc])
     end.
