@@ -64,11 +64,3 @@ fold_expr_list(Ks) ->
     lists:foldl(fun({_, HE}, A)->
                         <<A/binary, HE/binary>>
                 end, <<"">>, Ks).
-
-fold_list_expr_list(Ks) ->
-    lists:foldl(fun({find, Exprs}, A) ->
-                        HE = fold_expr_list(Exprs),
-                        <<A/binary, HE/binary >>;
-                   ({_, HE}, A)->
-                        <<A/binary, HE/binary>>
-                end, <<"">>, Ks).

@@ -193,10 +193,10 @@ generate_matcher({span, Exprs, Strict}, Options, CB) ->
     end;
 
 generate_matcher({find, {{span, Exprs}, _}}, Options, CB) ->
-    generate_matcher({find, {span, Exprs}, false}, Options, CB);
+    generate_matcher({find, {span, Exprs, false}}, Options, CB);
 generate_matcher({find, {{span, Exprs, eol}, _}}, Options, CB) ->
-    generate_matcher({find, {span, Exprs}, true}, Options, CB);
-generate_matcher({find, {span, Exprs}, Strict}, Options, CB) ->
+    generate_matcher({find, {span, Exprs, true}}, Options, CB);
+generate_matcher({find, {span, Exprs, Strict}}, Options, CB) ->
     Matchers = lists:foldr(fun(Expr, Acc) ->
                                [CB(Expr, Options, CB) | Acc]
                            end, [], Exprs),
