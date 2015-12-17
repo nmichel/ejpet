@@ -43,10 +43,12 @@ build_key({find, {_AST, Hash}}) ->
     ?BS("f", Hash);
 build_key(eol) ->
     <<"e">>;
+build_key({span, Acc}) ->
+    ?BS("ls", fold_expr_list(Acc));
+build_key({span, Acc, eol}) ->
+    ?BB(build_key({span, Acc}), build_key(eol));
 build_key({list, Acc}) ->
-    ?BS("l", fold_list_expr_list(Acc));
-build_key({list, Acc, eol}) ->
-    ?BB(build_key({list, Acc}), build_key(eol));
+    ?BS("l", fold_expr_list(Acc));
 build_key({iterable, any}) ->
     <<"ia">>;
 build_key({iterable, Acc, true}) ->
@@ -60,13 +62,5 @@ build_key({descendant, Acc, false}) ->
 
 fold_expr_list(Ks) ->
     lists:foldl(fun({_, HE}, A)->
-                        <<A/binary, HE/binary>>
-                end, <<"">>, Ks).
-
-fold_list_expr_list(Ks) ->
-    lists:foldl(fun({find, Exprs}, A) ->
-                        HE = fold_expr_list(Exprs),
-                        <<A/binary, HE/binary >>;
-                   ({_, HE}, A)->
                         <<A/binary, HE/binary>>
                 end, <<"">>, Ks).
