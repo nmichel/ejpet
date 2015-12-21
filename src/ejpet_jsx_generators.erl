@@ -347,12 +347,6 @@ generate_matcher(What, _Options, _CB) when What == true;
                 _ ->
                     {false, empty()}
             end
-    end;
-generate_matcher(eol, _Options, _CB) ->
-    fun([], _Params) ->
-            {true, empty()};
-       (_, _Params) ->
-            {false, empty()}
     end.
 
 %% -----
