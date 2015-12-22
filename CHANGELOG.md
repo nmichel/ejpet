@@ -1,9 +1,9 @@
-# Master
+# 0.5.0
 
 ### Bug fix(es)
-* Empty list [] used to match pattern "[_]". Shouldn't. (#5)
+* Empty list ```[]``` used to match pattern ```[_]```. Shouldn't. (#5)
 * mochijson backend did not return captures in the required order.
-* jsx backend was flawed when it came to match objects with pattern "[*]" (any list) : it shouldn't match but it did.
+* jsx backend was flawed when it came to match objects with pattern ```[*]``` (any list) : it shouldn't match but it did.
 
 ### Breaking change(s)
 
