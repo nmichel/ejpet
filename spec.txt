@@ -7,7 +7,10 @@ expr    -> "{" spaces "}"
          | "{" spaces pair spaces (',' spaces pair)* spaces "}"
          | "[" spaces "]"
          | "[" spaces "*" spaces "]"
-         | "[" spaces item tail
+         | "[" spaces span spaces "]"
+         | "[" spaces span spaces "," spaces "*" spaces "]"
+         | "[" spaces span spaces "," spaces tail
+         | "[" spaces tail
          | "<" spaces ">"
          | "<" spaces (pattern spaces (',' spaces pattern)*)? spaces ">" ("/g")?
          | "<!" spaces (pattern spaces (',' spaces pattern)*)? spaces "!>" ("/g")?
@@ -24,12 +27,11 @@ pair    -> string spaces ":" spaces pattern
          | string spaces ":" spaces "_"
          | "_" spaces ":" spaces pattern
 
-item    -> "*" spaces "," spaces pattern
-         | spaces pattern
+span    -> pattern (spaces "," spaces pattern)*
 
-tail    -> spaces "]"
-         | spaces "," spaces "*" spaces "]"
-         | spaces "," spaces item tail
+tail    -> span_find (spaces "," spaces span_find)* spaces ("," spaces "*" spaces)? "]"
+
+span_find -> "*" spaces "," spaces span
 
 number  -> integer decimal frac
          | integer decimal
