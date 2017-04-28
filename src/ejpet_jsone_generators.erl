@@ -1,4 +1,4 @@
--module(ejpet_jiffy_generators).
+-module(ejpet_jsone_generators).
 -author('nicolas.michel.lava@gmail.com').
 
 -export([generate_matcher/3]).
@@ -92,9 +92,9 @@ generate_matcher({inject, regex, Name}, _Options, _CB) ->
 %% ---- Object
 
 generate_matcher({object, any}, _Options, _CB) ->
-    fun({[]}, _Params) ->
+    fun([{}], _Params) ->
             {true, empty()};
-       ({[{_, _} | _]}, _Params) ->
+       ([{_, _} | _], _Params) ->
             {true, empty()};
        (_, _Params) ->
             {false, empty()}
@@ -103,7 +103,7 @@ generate_matcher({object, Conditions}, Options, CB) ->
     PairMatchers = lists:map(fun(C) ->
                                      CB(C, Options, CB)
                              end, Conditions),
-    fun({Items}, Params) when is_list(Items) ->
+    fun(Items, Params) when is_list(Items) ->
             R = [continue_until_match(Items, PairMatcher, Params) || PairMatcher <- PairMatchers],
             {AccCaptures, AccFailedCount} = 
                 lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
@@ -160,17 +160,29 @@ generate_matcher({list, empty}, _Options, _CB) ->
     end;
 
 generate_matcher({list, any}, _Options, _CB) ->
-    fun(Items, _Params) when is_list(Items) ->
+    fun([], _Params) ->
+            {true, empty()};
+       ([{}], _Params) -> % jsx special form for empty object
+            {false, empty()};
+       ([{_, _} |_], _Params) -> % jsx form for non empty object
+            {false, empty()};
+       ([_|_], _Params) ->
             {true, empty()};
        (_, _Params) ->
             {false, empty()}
     end;
-
+    
 generate_matcher({list, Conditions}, Options, CB) ->
     ItemMatchers = lists:map(fun(Expr) ->
                                  CB(Expr, Options, CB)
                              end, Conditions),
-    fun(Items, Params) when is_list(Items) ->
+    fun([{}], _Params) -> % jsx special form for empty object
+            {false, empty()};
+       ([{_, _} | _], _Params) -> %% jsx special form for non empty object
+            {false, empty()};
+       ([], _Params) -> %% cannot match anything in an empty list
+            {false, empty()};
+       (Items, Params) when is_list(Items) ->
             {Statuses, _Tail} =
                 lists:foldl(fun(Matcher, {Acc, ItemList})->
                                     {S, R} = Matcher(ItemList, Params),
@@ -211,9 +223,11 @@ generate_matcher({find, Expr}, Options, CB) ->
 %% ----- Iterable
 
 generate_matcher({iterable, any}, _Options, _CB) ->
+    %% jsx represents both list and object as erlang lists.
+    %% Therefore, checking if an item is an erlang list is enough to say 
+    %% that it is an iterable.
+    %% 
     fun(What, _Params) when is_list(What) ->
-            {true, empty()};
-       ({_What}, _Params) ->
             {true, empty()};
        (_, _Params) ->
             {false, empty()}
@@ -223,57 +237,45 @@ generate_matcher({iterable, Conditions, Flags}, Options, CB) ->
     Matchers = lists:map(fun(C) ->
                                  CB(C, Options, CB)
                          end, Conditions),
-    DoMatch =
-        fun(Items, Params) ->
-                R = [continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
-                {AccCaptures, AccFailedCount} = 
-                    lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                        {melt_captures(CapAcc, Captures), FailedAcc};
-                                   (_, {CapAcc, FailedAcc}) ->
-                                        {CapAcc, FailedAcc + 1}
-                                end, {empty(), 0}, R),
-                case AccFailedCount of
-                    0 ->
-                        {true, AccCaptures};
-                    _ ->
-                        {false, empty()}
-                end
-        end,
-    fun({Items}, Params) when is_list(Items) ->
-            DoMatch(Items, Params);
-       (Items, Params) when is_list(Items) ->
-            DoMatch(Items, Params);
+    fun(Items, Params) when is_list(Items) ->
+            R = [continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
+            {AccCaptures, AccFailedCount} = 
+                lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
+                                    {melt_captures(CapAcc, Captures), FailedAcc};
+                               (_, {CapAcc, FailedAcc}) ->
+                                    {CapAcc, FailedAcc + 1}
+                            end, {empty(), 0}, R),
+            case AccFailedCount of
+                0 ->
+                    {true, AccCaptures};
+                _ ->
+                    {false, empty()}
+            end;
        (_, _Params) ->
             {false, empty()}
     end;
 
-%% ----- Descedant
+%% ----- Descendant
 
 generate_matcher({descendant, Conditions, Flags}, Options, CB) ->
     Matchers = lists:map(fun(C) ->
                                  CB(C, Options, CB)
                          end, Conditions),
-    DoMatch =
-        fun(Items, Params) ->
-                R = [deep_continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
-                {AccCaptures, AccFailedCount} = 
-                    lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
-                                        {melt_captures(CapAcc, Captures), FailedAcc};
-                                   (_, {CapAcc, FailedAcc}) ->
-                                        {CapAcc, FailedAcc + 1}
-                                end, {empty(), 0}, R),
-                case AccFailedCount of
-                    0 ->
-                        {true, AccCaptures};
-                    _ ->
-                        {false, empty()}
-                end
-        end,
-    fun({Items}, Params) when is_list(Items) ->
-            DoMatch(Items, Params);
-       (Items, Params) when is_list(Items) ->
-            DoMatch(Items, Params);
-       (_, _Params) ->
+    fun (Items, Params) when is_list(Items) ->
+            R = [deep_continue_until_value_match(Items, Matcher, Params, Flags) || Matcher <- Matchers],
+            {AccCaptures, AccFailedCount} = 
+                lists:foldl(fun({{true, Captures}, _}, {CapAcc, FailedAcc}) ->
+                                    {melt_captures(CapAcc, Captures), FailedAcc};
+                               (_, {CapAcc, FailedAcc}) ->
+                                    {CapAcc, FailedAcc + 1}
+                            end, {empty(), 0}, R),
+            case AccFailedCount of
+                0 ->
+                    {true, AccCaptures};
+                _ ->
+                    {false, empty()}
+            end;
+        (_, _Params) ->
             {false, empty()}
     end;
 
@@ -284,7 +286,7 @@ generate_matcher({string, BinString}, _Options, _CB) ->
             case What of 
                 BinString ->
                     {true, empty()};
-                (_) ->
+                _ ->
                     {false, empty()}
             end
     end;
@@ -342,7 +344,7 @@ generate_matcher(What, _Options, _CB) when What == true;
             case Item of
                 What ->
                     {true, empty()};
-                (_) ->
+                _ ->
                     {false, empty()}
             end
     end.
@@ -389,12 +391,12 @@ continue_until_match([Item | Tail], Matcher, Params) ->
             continue_until_match(Tail, Matcher, Params)
     end.
 
+continue_until_value_match([{}], _Matcher, _Params, _Flags) ->
+    {{false, empty()}, []};
 continue_until_value_match([], _Matcher, _Params, _Flags) ->
     {{false, empty()}, []};
-continue_until_value_match({Items}, Matcher, Params, Flags) ->
-    continue_until_value_match(Items, Matcher, Params, Flags);
 continue_until_value_match(Iterable, Matcher, Params, true) ->
-    {continue_until_end_(Iterable, Matcher, Params), empty()};
+    {continue_until_end_(Iterable, Matcher, Params), []};
 continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, false) ->
     case Matcher(Val, Params) of 
         R = {true, _} ->
@@ -404,7 +406,7 @@ continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, false) ->
     end;
 continue_until_value_match([Item | Tail], Matcher, Params, false) ->
     case Matcher(Item, Params) of 
-         R = {true, _} ->
+        R = {true, _} ->
             {R, Tail};
         _ ->
             continue_until_value_match(Tail, Matcher, Params, false)
@@ -413,6 +415,8 @@ continue_until_value_match([Item | Tail], Matcher, Params, false) ->
 continue_until_end_(Iterable, Matcher, Params) ->
     continue_until_end_(Iterable, Matcher, Params, {false, empty()}).
 
+continue_until_end_([{}], _Matcher, _Params, Acc) ->
+    Acc;
 continue_until_end_([], _Matcher, _Params, Acc) ->
     Acc;
 continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
@@ -422,10 +426,10 @@ continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
     continue_until_end_(Tail, Matcher, Params, {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)}).
 
+deep_continue_until_value_match([{}], _Matcher, _Params, _Flags) ->
+    {{false, empty()}, []};
 deep_continue_until_value_match([], _Matcher, _Params, _Flags) ->
     {{false, empty()}, []};
-deep_continue_until_value_match({Items}, Matcher, Params, Flags) ->
-    deep_continue_until_value_match(Items, Matcher, Params, Flags);
 deep_continue_until_value_match(Iterable, Matcher, Params, true) ->
     {deep_continue_until_end_(Iterable, Matcher, Params), empty()};
 deep_continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, Flags) ->
@@ -434,13 +438,6 @@ deep_continue_until_value_match([{_Key, Val} | Tail], Matcher, Params, Flags) ->
             {R, Tail};
         _ ->
             case Val of
-                {_} ->
-                    case deep_continue_until_value_match(Val, Matcher, Params, Flags) of 
-                        {R2 = {true, _}, _} ->
-                            {R2, Tail};
-                        _ ->
-                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
-                    end;
                 [_|_] ->
                     case deep_continue_until_value_match(Val, Matcher, Params, Flags) of 
                         {R2 = {true, _}, _} ->
@@ -458,13 +455,6 @@ deep_continue_until_value_match([Item | Tail], Matcher, Params, Flags) ->
             {R, Tail};
         _ ->
             case Item of
-                {_} ->
-                    case deep_continue_until_value_match(Item, Matcher, Params, Flags) of 
-                        {R2 = {true, _}, _} ->
-                            {R2, Tail};
-                        _ ->
-                            deep_continue_until_value_match(Tail, Matcher, Params, Flags)
-                    end;
                 [_|_] ->
                     case deep_continue_until_value_match(Item, Matcher, Params, Flags) of 
                         {R2 = {true, _}, _} ->
@@ -480,15 +470,14 @@ deep_continue_until_value_match([Item | Tail], Matcher, Params, Flags) ->
 deep_continue_until_end_(Iterable, Matcher, Params) ->
     deep_continue_until_end_(Iterable, Matcher, Params, {false, empty()}).
 
+deep_continue_until_end_([{}], _Matcher, _Params, Acc) ->
+    Acc;
 deep_continue_until_end_([], _Matcher, _Params, Acc) ->
     Acc;
 deep_continue_until_end_([{_Key, Val} | Tail], Matcher, Params, {AccStatus, AccCaptures}) ->
     {LocalStatus, LocalCaptures} = Matcher(Val, Params),
     LocalAcc = {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)},
     case Val of
-        {Props} ->
-            R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
-            deep_continue_until_end_(Tail, Matcher, Params, R);
         [_|_] ->
             R = deep_continue_until_end_(Val, Matcher, Params, LocalAcc),
             deep_continue_until_end_(Tail, Matcher, Params, R);
@@ -499,9 +488,6 @@ deep_continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures
     {LocalStatus, LocalCaptures} = Matcher(Item, Params),
     LocalAcc = {LocalStatus or AccStatus, melt_captures(AccCaptures, LocalCaptures)},
     case Item of
-        {Props} ->
-            R = deep_continue_until_end_(Props, Matcher, Params, LocalAcc),
-            deep_continue_until_end_(Tail, Matcher, Params, R);
         [_|_] ->
             R = deep_continue_until_end_(Item, Matcher, Params, LocalAcc),
             deep_continue_until_end_(Tail, Matcher, Params, R);
@@ -510,11 +496,17 @@ deep_continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures
     end.
 
 empty() ->
-    {[]}.
+    [{}].
 
-melt_captures({P1}, {P2}) ->
-    {ejpet_helpers:melt(P1, P2)}.
+melt_captures([{}], C) ->
+    C;
+melt_captures(C, [{}]) ->
+    C;
+melt_captures(P1, P2) ->
+    ejpet_helpers:melt(P1, P2).
 
-add_captures({Pairs}, Name, Values) ->
-    {ejpet_helpers:melt([{Name, Values}], Pairs)}.
+add_captures([{}], Name, Values) ->
+    [{Name, Values}];
+add_captures(Pairs, Name, Values) ->
+    ejpet_helpers:melt([{Name, Values}], Pairs).
 

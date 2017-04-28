@@ -381,8 +381,8 @@ continue_until_span_match(What = [_ | Tail], SpanMatcher, Params) ->
             continue_until_span_match(Tail, SpanMatcher, Params)
     end.
 
-continue_until_match([], Matcher, Params) ->
-    {Matcher([], Params), []};
+continue_until_match([], _Matcher, _Params) ->
+    {{false, empty()}, []};
 continue_until_match([Item | Tail], Matcher, Params) ->
     case Matcher(Item, Params) of 
         R = {true, _} ->

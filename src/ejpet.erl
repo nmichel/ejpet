@@ -24,13 +24,14 @@
 %% {string_apply_escape_sequence, (true|false)}
 %% -----
 
--type backend() :: jsx | jiffy | mochijson2.
+-type backend() :: jsx | jiffy | mochijson2 | jsone.
 -export_type([backend/0]).
 
 -type jsx_term() :: any().
 -type jiffy_term() :: any().
 -type mochijson2_term() :: any().
--type json_term() :: jsx_term() | jiffy_term() | mochijson2_term().
+-type jsone_term() :: any().
+-type json_term() :: jsx_term() | jiffy_term() | mochijson2_term() | jsone_term().
 -export_type([json_term/0]).
 
 -type match_stat() :: boolean().
@@ -68,6 +69,8 @@
 -spec decode(json_input(), backend()) -> json_term().
 decode(JSON, Backend) when is_list(JSON) ->
     decode(list_to_binary(JSON), Backend);
+decode(JSON, jsone) when is_binary(JSON) ->
+    jsone:decode(JSON, [{object_format, proplist}]);
 decode(JSON, Backend) when is_binary(JSON) ->
     Backend:decode(JSON).
 
@@ -160,7 +163,9 @@ empty_capture_set(jsx) ->
 empty_capture_set(jiffy) ->
     {[]};
 empty_capture_set(mochijson2) ->
-    {struct, []}.
+    {struct, []};
+empty_capture_set(jsone) ->
+    [{}].
 
 get_capture_any(Caps, Name, jsx) ->
     get_capture_jsx(Caps, Name);
@@ -168,6 +173,8 @@ get_capture_any(Caps, Name, jiffy) ->
     get_capture_jiffy(Caps, Name);
 get_capture_any(Caps, Name, mochijson2) ->
     get_capture_mochijson2(Caps, Name);
+get_capture_any(Caps, Name, jsone) ->
+    get_capture_jsone(Caps, Name);
 get_capture_any(Caps, Name, JPM) ->
     get_capture_any(Caps, Name, ejpet:backend(JPM)).
 
@@ -178,6 +185,9 @@ get_capture_jiffy({Caps}, Name) ->
     get_capture_kv(Caps, Name).
     
 get_capture_mochijson2({struct, Caps}, Name) ->
+    get_capture_kv(Caps, Name).
+    
+get_capture_jsone(Caps, Name) ->
     get_capture_kv(Caps, Name).
 
 get_capture_kv([], _Name) ->
