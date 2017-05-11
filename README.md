@@ -13,7 +13,7 @@ Kind of regular expression applied to JSON documents.
 * Useful to extract small data pieces from large JSON documents.
 * Efficient filtering of JSON nodes in real time.
 
-Backends for  jsx, jiffy and mochijson2.
+Backends for  jsone, jsx, jiffy and mochijson2.
 
 
 Quick start
