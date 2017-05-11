@@ -1,4 +1,4 @@
-# master
+# 0.6.0
 
 ### Bug fix(es)
 * Something was wrong when no (k,v) pairs of an object were matching a (k,v) pair matching pattern.
