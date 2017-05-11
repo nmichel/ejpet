@@ -42,16 +42,19 @@ do_test(Name, Matcher, Node, Injected, ExpS, ExpC) ->
     NodeText = jsx:encode(Node),
     NodeBackend = ejpet:decode(NodeText, ejpet:backend(Matcher)),
     {S, Caps} = ejpet:run(NodeBackend, Matcher, Injected),
-    RealC = ejpet:decode(ejpet:encode(Caps, ejpet:backend(Matcher)), ?REF_BACKEND),
+    RealC = ejpet:decode(ejpet:encode(Caps, ejpet:backend(Matcher)), ejpet:backend(Matcher)),
+    ReencodedExpC = ejpet:decode(ejpet:encode(ExpC, ?REF_BACKEND), ejpet:backend(Matcher)),
 
     % ?debugFmt("-----", []),
     % ?debugFmt("Name ~p", [unicode:characters_to_list(Name)]),
     % ?debugFmt("Test ~p", [unicode:characters_to_list(NodeText)]),
     % ?debugFmt("ExpC ~p", [ExpC]),
+    % ?debugFmt("ReencodedExpC ~p", [ReencodedExpC]),
+    % ?debugFmt("Caps ~p", [Caps]),
     % ?debugFmt("RealC ~p", [RealC]),
-    % ?debugFmt("{~p, RealC} == {~p, ExpC} : ~p", [S, ExpS, {S, RealC} == {ExpS, ExpC}]),
+    % ?debugFmt("{~p, RealC} == {~p, ExpC} : ~p", [S, ExpS, {S, RealC} == {ExpS, ReencodedExpC}]),
 
-    {<<Name/binary, $|, NodeText/binary>>, ?_test(?assert({S, RealC} == {ExpS, ExpC}))}.
+    {<<Name/binary, $|, NodeText/binary>>, ?_test(?assert({S, RealC} == {ExpS, ReencodedExpC}))}.
 
 -endif.
 

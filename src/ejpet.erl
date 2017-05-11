@@ -69,8 +69,6 @@
 -spec decode(json_input(), backend()) -> json_term().
 decode(JSON, Backend) when is_list(JSON) ->
     decode(list_to_binary(JSON), Backend);
-decode(JSON, jsone) when is_binary(JSON) ->
-    jsone:decode(JSON, [{object_format, proplist}]);
 decode(JSON, Backend) when is_binary(JSON) ->
     Backend:decode(JSON).
 
