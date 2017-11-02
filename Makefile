@@ -1,13 +1,16 @@
 VERBOSE = 0
 
 build:
-	./rebar compile
+	./rebar3 compile
 
 clean:
-	./rebar clean
+	./rebar3 clean
 
 test: build
-	./rebar eunit verbose=$(VERBOSE) skip_deps=true
+	./rebar3 eunit verbose=$(VERBOSE) skip_deps=true
 
 shell:
-	erl -pz ./ebin -pz ./deps/*/ebin 
+	./rebar3 as dev get-deps
+	./rebar3 as dev tree
+	./rebar3 as dev compile
+	erl -pz ./_build/dev/lib/*/ebin

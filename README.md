@@ -2,6 +2,7 @@ ejpet
 =====
 Matching JSON nodes in Erlang.
 
+[![hex.pm version](https://img.shields.io/hexpm/v/ejpet.svg)](https://hex.pm/packages/ejpet)
 [![Build Status](https://travis-ci.org/nmichel/ejpet.png)](https://travis-ci.org/nmichel/ejpet)
 
 What for ?
@@ -13,11 +14,57 @@ Kind of regular expression applied to JSON documents.
 * Useful to extract small data pieces from large JSON documents.
 * Efficient filtering of JSON nodes in real time.
 
-Backends for  jsone, jsx, jiffy and mochijson2.
+Backends for  sone, jsx, jiffy and mochijson2.
 
 
 Quick start
 =====
+
+Obtain ```ejpet```
+-----
+
+#### Add it to your project
+
+Add a dependency to ```ejpet``` and possibly to a supported JSON
+codec in your project dependency set.
+
+* With ```rebar3```, in ```rebar.config``` file
+
+```erlang
+{deps, [
+    %% ...
+    {ejpet, ".*", {git, "git://github.com/nmichel/ejpet.git", {tag, "0.7.0"}},
+    {jsx, ".*", {git, "https://github.com/talentdeficit/jsx.git", {tag, "v2.8.3"}},
+    %% ...
+]}.
+```
+
+* With ```mix```, in ```mix.exs``` file
+
+```elixir
+defmodule MyProject.Mixfile do
+  use Mix.Project
+  
+  def project do
+    [
+      # ...
+      deps: deps()
+      # ...
+    ]
+  end
+  
+  defp deps() do
+    [
+      # ...
+      {:ejpet, "~> 0.7.0"},
+      {:jsx, "~> 2.8"},
+      # ...
+    ]
+  end
+end
+```
+
+#### From source
 
 Clone
 
@@ -39,6 +86,9 @@ Start Erlang shell
 erl -pz ./ebin ./deps/*/ebin
 ```
 
+Start (m)using 
+----
+
 Read some JSON data
 
 ```erlang
@@ -47,7 +97,7 @@ Read some JSON data
       32,32,32,32,32,32,34,110,117,109,98,101,...>>}
 ```
 
-Decode JSON using, say, jsx
+Decode JSON using, say, jsx (provided you have ```jsx``` in your load path)
 
 ```erlang
 2> Node = jsx:decode(Data).

@@ -1,4 +1,11 @@
-# master 
+# 0.7.0
+
+### New feature(s)
+* Published as [hex](https://www.hex.pm "hex package manager") package. 
+
+### Breaking change(s)
+* ```ejpet``` does not have any JSON decoder/encoder in its dependencies anymore.
+  User must ensure he/she has one of the supported JSON codecs in its BEAM load path.
 
 # 0.6.0
 

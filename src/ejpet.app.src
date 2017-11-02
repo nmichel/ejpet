@@ -1,12 +1,16 @@
-{application, ejpet,
- [
-  {description, ""},
-  {vsn, "0.6.0"},
-  {registered, []},
-  {applications, [
-                  kernel,
-                  stdlib
-                 ]},
-  {mod, {ejpet_app, []}},
-  {env, []}
- ]}.
+{application, ejpet, [
+    {description, "Search my JSON"},
+    {vsn, "0.7.0"},
+    {registered, []},
+    {applications, [kernel, stdlib]},
+    {maintainers, ["Nicolas Michel"]},
+    {licenses, ["MIT", "BSD"]},
+    {links, [{"GitHub", "https://github.com/nmichel/ejpet"}]},
+    {mod, {ejpet_app, []}},
+    {env, []},
+    {files, [
+      "src", "test",
+      "rebar.config", "rebar.lock", "Makefile",
+      "README.md", "CHANGELOG.md"
+    ]}
+]}.
