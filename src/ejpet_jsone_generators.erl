@@ -550,17 +550,17 @@ deep_continue_until_end_([Item | Tail], Matcher, Params, {AccStatus, AccCaptures
     end.
 
 empty() ->
-    [{}].
+    #{}.
 
-melt_captures([{}], C) ->
+melt_captures(Empty, C) when map_size(Empty) == 0 ->
     C;
-melt_captures(C, [{}]) ->
+melt_captures(C, Empty) when map_size(Empty) == 0 ->
     C;
 melt_captures(P1, P2) ->
     ejpet_helpers:melt(P1, P2).
 
-add_captures([{}], Name, Values) ->
-    [{Name, Values}];
+add_captures(Empty, Name, Values) when map_size(Empty) == 0 ->
+    maps:put(Name, Values, #{});
 add_captures(Pairs, Name, Values) ->
-    ejpet_helpers:melt([{Name, Values}], Pairs).
-
+    New = maps:put(Name, Values, #{}),
+    ejpet_helpers:melt(New, Pairs).
