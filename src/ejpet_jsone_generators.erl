@@ -367,12 +367,14 @@ generate_matcher(What, _Options, _CB) when What == true;
                                            What == false;
                                            What == null ->
     fun(Item, _Params) ->
-            case Item of
-                What ->
-                    {true, empty()};
-                _ ->
-                    {false, empty()}
-            end
+        case Item of
+            nil when What == null ->
+                {true, empty()};
+            What ->
+                {true, empty()};
+            _ ->
+                {false, empty()}
+        end
     end.
 
 %% -----
