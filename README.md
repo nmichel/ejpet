@@ -14,7 +14,7 @@ Kind of regular expression applied to JSON documents.
 * Useful to extract small data pieces from large JSON documents.
 * Efficient filtering of JSON nodes in real time.
 
-Backends for  sone, jsx, jiffy and mochijson2.
+Backends for jsone, jsx, jiffy and mochijson2.
 
 
 Quick start
@@ -251,6 +251,7 @@ This JSON object is build with repect to the backend indicated when compiling th
 * jsx: `[{}]`
 * jiffy: `{[]}`
 * mochijson: `{struct, []}`
+* jsone: `#{}`
 
 One may wonder why return captures as a encoded JSON object. There is 2 reasons :
   1. captures objects are captured "as is" in the parsed document, i.e. in their encoded form. Using the backend encoding for the result is more coherent;
@@ -269,7 +270,7 @@ Note that `string` values should be binaries, and `regex` values MUST be `mp()` 
 # API
 
 ```erlang
-backend() = jsx | jiffy | mochijson2
+backend() = jsx | jiffy | mochijson2 | jsone
 epm() = {ejpet, term(), term()}
 expr_src() = string()
 compile_option() = {string_apply_escape_sequence, boolean()}
