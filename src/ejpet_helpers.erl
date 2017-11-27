@@ -1,8 +1,14 @@
 -module(ejpet_helpers).
 -author('nicolas.michel.lava@gmail.com').
 
--export([melt/2]).
+-export([melt/2,
+         get_value/2]).
 
+
+get_value(Key, Map) when is_map(Map) ->
+    maps:get(Key, Map, undefined);
+get_value(Key, KVList) when is_list(KVList) ->
+    proplists:get_value(Key, KVList).
 
 melt(Empty, M) when map_size(Empty) == 0 ->
     M;

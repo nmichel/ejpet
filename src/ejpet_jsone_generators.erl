@@ -23,7 +23,7 @@ generate_matcher({inject, Type, Name}, Options, CB) when is_list(Name) ->
     generate_matcher({inject, Type, list_to_binary(Name)}, Options, CB);
 generate_matcher({inject, boolean, Name}, _Options, _CB) ->
     fun(What, Params) when What == true; What == false ->
-            case proplists:get_value(Name, Params) of 
+            case ejpet_helpers:get_value(Name, Params) of
                 What ->
                     {true, empty()};
                 _ ->
@@ -34,7 +34,7 @@ generate_matcher({inject, boolean, Name}, _Options, _CB) ->
     end;
 generate_matcher({inject, string, Name}, _Options, _CB) ->
     fun(What, Params) when is_binary(What) ->
-            case proplists:get_value(Name, Params) of 
+            case ejpet_helpers:get_value(Name, Params) of
                 What ->
                     {true, empty()};
                 _ ->
@@ -45,11 +45,11 @@ generate_matcher({inject, string, Name}, _Options, _CB) ->
     end;
 generate_matcher({inject, number, Name}, Options, _CB) ->
     fun(What, Params) when is_number(What) ->
-            case proplists:get_value(Name, Params) of 
+            case ejpet_helpers:get_value(Name, Params) of
                 undefined ->
                     {false, empty()};
                 Number ->
-                    case proplists:get_value(number_strict_match, Options) of 
+                    case ejpet_helpers:get_value(number_strict_match, Options) of
                         true ->
                             case What =:= Number of
                                 true ->
@@ -71,7 +71,7 @@ generate_matcher({inject, number, Name}, Options, _CB) ->
     end;
 generate_matcher({inject, regex, Name}, _Options, _CB) ->
     fun(What, Params) when is_binary(What) ->
-            case proplists:get_value(Name, Params) of 
+            case ejpet_helpers:get_value(Name, Params) of
                 undefined ->
                     {false, empty()};
                 MP ->
@@ -335,7 +335,7 @@ generate_matcher({regex, BinString}, Options, _CB) ->
             {false, empty()}
     end;
 generate_matcher({number, Number}, Options, _CB) ->
-    case proplists:get_value(number_strict_match, Options) of 
+    case ejpet_helpers:get_value(number_strict_match, Options) of
         true ->
             fun(What, _Params) when is_number(What) ->
                     case What of 
