@@ -1,3 +1,11 @@
+# 0.7.1
+
+Bugfix version to help in crafting Exjpet.
+
+### New feature(s)
+* Make value `nil` matches pattern expression `null`.
+* Use maps to store collect captures in `jsone` backend generator.
+
 # 0.7.0
 
 ### New feature(s)
