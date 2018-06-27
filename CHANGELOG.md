@@ -1,3 +1,8 @@
+# 0.8.0
+
+### New feature(s)
+* Allow for matching object key with a regex.
+
 # 0.7.1
 
 Bugfix version to help in crafting Exjpet.

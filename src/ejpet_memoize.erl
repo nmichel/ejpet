@@ -29,10 +29,10 @@ build_key({object, any}) ->
     <<"oa">>;
 build_key({object, Acc}) ->
     ?BS("o", fold_expr_list(Acc));
-build_key({pair, {string, String}, any}) ->
-    ?BB(?BS("ps", ?STOB(String)), ?STOB("any"));
-build_key({pair, {string, String}, {_AST, Hash}}) ->
-    ?BB(?BS("ps", ?STOB(String)), Hash);
+build_key({pair, Key, any}) ->
+    ?BB(?BS("ps", build_key(Key)), ?STOB("any"));
+build_key({pair, Key, {_AST, Hash}}) ->
+    ?BB(?BS("ps", build_key(Key)), Hash);
 build_key({pair, any, {_AST, Hash}}) ->
     ?BS("pa", Hash);
 build_key({list, empty}) ->
