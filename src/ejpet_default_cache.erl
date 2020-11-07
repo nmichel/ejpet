@@ -9,17 +9,17 @@
 start_server() ->
     gen_server:start_link(ejpet_default_cache_srv, [], []).
 
-stop_server(Pid) ->
-    gen_server:cast(Pid, stop).
+stop_server(Name) ->
+    gen_server:cast(Name, stop).
 
 build_cache_fun() ->
     fun({get, _}) ->
             false;
-       ({store, _Key, Matcher}) ->
+        ({store, _Key, Matcher}) ->
             {ok, Matcher}
     end.
 
-build_cache_fun(Pid) ->
+build_cache_fun(Name) ->
     fun(Op) ->
-            gen_server:call(Pid, Op)
+            gen_server:call(Name, Op)
     end.
