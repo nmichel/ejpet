@@ -99,8 +99,10 @@ compile(Pattern, Backend, Options) ->
 
 -spec compile(binary(), backend(), compile_options(), cache_fun()) -> epm().
 compile(Pattern, Backend, Options, CacheFun) ->
-    {[], AST} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, Options)),
-    {ejpet, Backend, ejpet_generator:generate_matcher(AST, Options, (generator(Backend)), CacheFun)}.
+    {[], ParseResult} = ejpet_parser:parse(ejpet_scanner:tokenize(Pattern, Options)),
+    {_AST, Key} = ParseResult,
+    MatcherFun = ejpet_generator:generate_matcher(ParseResult, Options, (generator(Backend)), CacheFun),
+    {ejpet, Backend, {MatcherFun, Key}}.
 
 -spec backend(epm()) -> backend().
 backend({ejpet, Backend, _Fun}) ->
@@ -111,7 +113,7 @@ run(Node, EPM) ->
     run(Node, EPM, []).
 
 -spec run(json_term(), epm(), run_params()) -> run_res().
-run(Node, {ejpet, _Backend, Fun}, Params) ->
+run(Node, {ejpet, _Backend, {Fun, _Key}}, Params) ->
     Fun(Node, Params).
 
 -spec match(json_input(), epm() | binary()) -> match_res().
