@@ -1,3 +1,27 @@
+# 0.8.0
+
+Bugfixes and some cheanges to help in crafting compile-time matcher generation in Exjpet.
+
+### Bug fix(es)
+* Fix key of `<>` (any iterable) as it collided with key of `<_>` (iterable with one any value)
+* Fix parsing of object entries matchers. Generators modified accordingly.
+
+### New feature(s)
+* Retrieve all cached entries from the cache server.
+* Clear all entries of the cache server.
+
+### Breaking change(s)
+* `epm()` type changes for `{ejpet, backend(), {gen(), key()}`}.
+ 
+ 
+    where
+
+    * `backend()` is the name of the backend upon which the name of the generator module has been crafted,
+    * `gen()` is the opaque type of the value returnde by the generator,
+    * `key()` is the key for the whole pattern. 
+
+    Function `ejpet:run/3` implementation has been changed so that API user has nothing to change.
+
 # 0.7.1
 
 Bugfix version to help in crafting Exjpet.
