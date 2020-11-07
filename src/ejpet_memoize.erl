@@ -50,7 +50,7 @@ build_key({span, Acc, eol}) ->
 build_key({list, Acc}) ->
     ?BS("l", fold_expr_list(Acc));
 build_key({iterable, any}) ->
-    <<"ia">>;
+    <<"iz">>;
 build_key({iterable, Acc, true}) ->
     ?BS("ig", fold_expr_list(Acc));
 build_key({iterable, Acc, false}) ->
