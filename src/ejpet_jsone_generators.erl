@@ -138,14 +138,14 @@ generate_matcher({pair, any, ValMatcherDesc}, Options, CB) ->
             {false, empty()}
     end;
 generate_matcher({pair, KeyMatcherDesc, any}, Options, CB) ->
-    KeyMatcher = generate_matcher(KeyMatcherDesc, Options, CB),
+    KeyMatcher = CB(KeyMatcherDesc, Options, CB),
     fun({Key, _Val}, Params) ->
             KeyMatcher(Key, Params);
        (_, _Params) ->
             {false, empty()}
     end;
 generate_matcher({pair, KeyMatcherDesc, ValMatcherDesc}, Options, CB) ->
-    KeyMatcher = generate_matcher(KeyMatcherDesc, Options, CB),
+    KeyMatcher = CB(KeyMatcherDesc, Options, CB),
     ValMatcher = CB(ValMatcherDesc, Options, CB),
     fun({Key, Val}, Params) ->
             {S1, Cap1} = KeyMatcher(Key, Params),
