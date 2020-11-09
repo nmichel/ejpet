@@ -70,11 +70,13 @@
 decode(JSON, Backend) when is_list(JSON) ->
     decode(list_to_binary(JSON), Backend);
 decode(JSON, Backend) when is_binary(JSON) ->
-    Backend:decode(JSON).
+    Codec = find_codec(Backend),
+    Codec:decode(JSON).
 
 -spec encode(json_term(), backend()) -> binary().
 encode(Node, Backend) ->
-    case Backend:encode(Node) of
+    Codec = find_codec(Backend),
+    case Codec:encode(Node) of
         R when is_binary(R) ->
             R;
         R when is_list(R) ->
@@ -166,6 +168,10 @@ empty_capture_set(mochijson2) ->
     {struct, []};
 empty_capture_set(jsone) ->
     [{}].
+
+-spec find_codec(backend()) -> atom().
+find_codec(Backend) ->
+    binary_to_atom(list_to_binary(io_lib:format("ejpet_~w_codec",[Backend])), utf8).
 
 get_capture_any(Caps, Name, jsx) ->
     get_capture_jsx(Caps, Name);

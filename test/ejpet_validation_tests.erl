@@ -16,7 +16,7 @@ validation_test_() ->
     
     {ok, {_, _, Body}} = httpc:request(get, {"https://gist.githubusercontent.com/nmichel/8b0d6f194e89abb7281d/raw/907027e8d0be034433e1f56661a6a4fa3292daff/validation_tests.json", []}, [], [{body_format, binary}]),
     %%{ok, Body} = file:read_file("/home/ubuntu/tmp/validation_tests.json.git/validation_tests.json"),
-    JSONTests = ?REF_BACKEND:decode(Body),
+    JSONTests = ejpet:decode(Body, ?REF_BACKEND),
     lists:foldl(fun(Backend, Acc) ->
             generate_test_suite_for_backend(Backend, JSONTests) ++ Acc
     end, [], ?BACKENDS).
