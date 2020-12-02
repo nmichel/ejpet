@@ -294,6 +294,9 @@ generate_matcher({regex, BinString}, Options, _CB) ->
     %% TODO - move the production of MP into the parser, which will store a evaluation function
     %% instead of BinString. Compile options should be passed to the parser, and also the runtime options.
     %% 
+    %% TODO : re:compile crashes when passed unknown options
+    %% ReOptions = filter_re_options(Options)
+    %% {ok, mp} = re:compile(BinString, ReOptions),
     {ok, MP} = re:compile(BinString, Options),
     fun(What, _Params) when is_binary(What) ->
             try re:run(What, MP) of 
@@ -371,7 +374,7 @@ check_span_match([E|Rest], [Matcher|Tail], Params, Acc, Strict) ->
             check_span_match(Rest, Tail, Params, [Cap | Acc], Strict)
     end.
 
-continue_until_span_match([], _Matchers, _Params) ->
+continue_until_span_match([], _SpanMatcher, _Params) ->
     {{false, empty()}, []};
 continue_until_span_match(What = [_ | Tail], SpanMatcher, Params) ->
     case SpanMatcher(What, Params) of
