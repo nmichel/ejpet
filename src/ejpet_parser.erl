@@ -72,6 +72,11 @@ expr_pair([{string, String}, column, underscore | Tail]) ->
 expr_pair([{string, String}, column | Tail]) ->
     {R, Expr} = pattern(Tail),
     {R, ?RESULT({pair, ?RESULT({string, String}), Expr})};
+expr_pair([{regex, String}, column, underscore | Tail]) ->
+    {Tail, ?RESULT({pair, ?RESULT({regex, String}), any})};
+expr_pair([{regex, String}, column | Tail]) ->
+    {R, Expr} = pattern(Tail),
+    {R, ?RESULT({pair, ?RESULT({regex, String}), Expr})};
 expr_pair([underscore, column | Tail]) ->
     {R, Expr} = pattern(Tail),
     {R, ?RESULT({pair, any, Expr})}.

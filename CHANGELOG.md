@@ -1,12 +1,14 @@
 # 0.8.0
 
-Bugfixes and some cheanges to help in crafting compile-time matcher generation in Exjpet.
+Matching object key again regex.
+Bugfixes and some changes to help in crafting compile-time matcher generation in Exjpet.
 
 ### Bug fix(es)
 * Fix key of `<>` (any iterable) as it collided with key of `<_>` (iterable with one any value)
 * Fix parsing of object entries matchers. Generators modified accordingly.
 
 ### New feature(s)
+* Allow for matching object key with a regex.
 * Retrieve all cached entries from the cache server.
 * Clear all entries of the cache server.
 

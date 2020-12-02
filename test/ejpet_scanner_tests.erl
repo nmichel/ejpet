@@ -62,7 +62,9 @@ tokenize_test_() ->
              {<<"\"\\u00E9l\\u00E9phant\""/utf8>>,
               [{string, <<"\x{00E9}l\x{00E9}phant"/utf8>>}]},
              {<<"!<foo> string number boolean regex">>,
-              [{inject, "foo"}, string, number, boolean, regex]}
+              [{inject, "foo"}, string, number, boolean, regex]},
+             {<<"{#\"foo.*\":_}">>,
+              [open_curvy_brace, {regex, <<"foo.*">>}, column, underscore, close_curvy_brace]}
             ],
     [{Expr, ?_test(?assert(ejpet_scanner:tokenize(Expr, []) == Expected))} || {Expr, Expected} <- Tests].
 
