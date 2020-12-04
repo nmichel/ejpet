@@ -42,7 +42,7 @@ handle_call({clear}, _From, State) ->
     {reply, ok, State#state{cache = dict:new()}}.
 
 handle_cast(stop, State) ->
-    {stop, stopped, State}.
+    {stop, normal, State}.
 
 handle_info(_Info, State) ->
     {stop, unexpected_msg, State}.
